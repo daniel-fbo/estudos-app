@@ -73,3 +73,16 @@ Formato:
 - importante: `CacheKeys` calcula o SHA-256 dos anexos em blocos de 64 KB.
 - importante: `CancellationToken.onCancel/cancel` sincronizados; callback roda uma só vez.
 - itens "menor" ignorados. Testes do revisor passaram sem ajuste.
+
+## M4 — Aulas — 2026-11-07 — concluído
+- feito: tela **Aulas** (tipo, conteúdo, tópicos → "Gerar"; lista com busca por título e filtro de área; Abrir PDF/pasta; status gerando/pronta/falhou, "Ver log"). Aviso de aula parecida (Jaccard de palavras ≥ 0,5) antes de gerar. Envia `aula_matematica|aula_programacao <conteúdo>: <tópicos>` ao Claude (modelo `aulas`, timeout 60 min, sempre `refresh` = sem cache) pela fila de IA.
+- ao terminar: procura `.pdf`/`.md` modificados desde o início sob `estudosRepo` (ignora pastas ocultas e `aulas/`), move para `<estudosRepo>/aulas/<matematica|programacao>/<slug>/` e atualiza `lesson`. Sem arquivo novo → FALHOU com log.
+- interfaces públicas novas: `app.lessons.LessonService` (`generate`, `similar`, `list`, `command`; via `Services.lessons()`), `LessonRepository` (impl. `infra.lessons.JdbcLessonRepository`), domínio `Lesson`, `LessonStatus`. Migration `V3__lesson_log` (coluna `log`).
+- testes: `LessonServiceTest` com runner falso que grava PDF/.md (fluxo, falha, título parecido). 101 testes.
+- pendências: aulas "GERANDO" ficam assim se o app fechar no meio; duas gerações simultâneas podem trocar arquivos entre si (detecção por data); `mvn javafx:run` não verificado (sem display).
+
+### M4 — correções da revisão
+- importante: `LessonFiles.findNew` só aceita `.md` com o mesmo nome do PDF (sem PDF, só se houver um único `.md`); teste `naoMoveMdSemRelacaoComOPdf` reativado (era `@Disabled`, estava certo).
+- importante: destino da aula usa `LessonFiles.freeDir` (sufixo `-2`, `-3`) em vez de sobrescrever aula anterior de mesmo slug.
+- importante: faltando PDF ou `.md`, a aula fica FALHOU com log dos arquivos encontrados (nada é movido).
+- itens "menor" ignorados.
