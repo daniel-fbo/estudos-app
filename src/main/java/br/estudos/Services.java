@@ -3,6 +3,8 @@ package br.estudos;
 import br.estudos.app.config.Config;
 import br.estudos.app.ports.ConfigStore;
 import br.estudos.app.ports.ProcessRunner;
+import br.estudos.app.code.CodeRunnerService;
+import br.estudos.infra.code.JdbcCodeRepository;
 import br.estudos.app.study.StudyService;
 import br.estudos.infra.study.JdbcStudyRepository;
 import br.estudos.app.tools.ExecutableChecker;
@@ -34,6 +36,7 @@ public final class Services implements AutoCloseable {
     private final ExecutableChecker executableChecker;
     private final ExecutorService background;
     private final StudyService studyService;
+    private final JdbcCodeRepository codeRepository;
 
     private Services(Path home, ConfigStore configStore, Config config, Database database,
                      ProcessRunner processRunner) {
@@ -43,6 +46,7 @@ public final class Services implements AutoCloseable {
         this.database = database;
         this.processRunner = processRunner;
         this.studyService = new StudyService(new JdbcStudyRepository(database), java.time.Clock.systemDefaultZone());
+        this.codeRepository = new JdbcCodeRepository(database);
         this.executableChecker = new ExecutableChecker(processRunner);
         this.background = Executors.newFixedThreadPool(2, r -> {
             Thread t = new Thread(r, "estudos-bg");
@@ -67,6 +71,10 @@ public final class Services implements AutoCloseable {
     public ProcessRunner processRunner() { return processRunner; }
     public ExecutableChecker executableChecker() { return executableChecker; }
     public StudyService study() { return studyService; }
+    /** Cria com os compiladores da configuração atual. */
+    public CodeRunnerService code() {
+        return new CodeRunnerService(processRunner, codeRepository, config.gccPath(), config.gppPath());
+    }
     public ExecutorService background() { return background; }
 
     public void saveConfig(Config newConfig) throws IOException {

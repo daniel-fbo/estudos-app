@@ -1,6 +1,7 @@
 package br.estudos.ui;
 
 import br.estudos.Services;
+import br.estudos.ui.code.CodeView;
 import br.estudos.ui.study.DashboardView;
 import br.estudos.ui.study.GoalsView;
 import br.estudos.ui.settings.SettingsView;
@@ -31,6 +32,7 @@ public class MainWindow {
         }
         screens.put("Painel", () -> new DashboardView(services).root());
         screens.put("Metas", () -> new GoalsView(services).root());
+        screens.put("Código", () -> new CodeView(services).root());
         screens.put("Configurações", () -> new SettingsView(services).root());
 
         VBox sidebar = new VBox();
