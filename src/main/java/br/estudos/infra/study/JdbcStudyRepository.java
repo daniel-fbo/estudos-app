@@ -7,7 +7,9 @@ import br.estudos.infra.db.Database;
 import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class JdbcStudyRepository implements StudyRepository {
     private final Database db;
@@ -88,7 +90,7 @@ public class JdbcStudyRepository implements StudyRepository {
                     try (ResultSet k = ps.getGeneratedKeys()) {
                         k.next();
                         return new Goal(k.getLong(1), g.title(), g.area(), g.kind(), g.period(), g.target(),
-                                g.manualCount(), g.autoCountAc(), g.active(), g.createdAt());
+                                g.manualCount(), g.countAc(), g.active(), g.createdAt());
                     }
                 }
             }
@@ -109,7 +111,7 @@ public class JdbcStudyRepository implements StudyRepository {
         ps.setString(4, g.period().name());
         ps.setDouble(5, g.target());
         ps.setInt(6, g.manualCount());
-        ps.setInt(7, g.autoCountAc());
+        ps.setInt(7, g.countAc() ? 1 : 0);
         ps.setInt(8, g.active() ? 1 : 0);
         ps.setString(9, g.createdAt().toString());
     }
@@ -136,7 +138,7 @@ public class JdbcStudyRepository implements StudyRepository {
             while (r.next()) {
                 out.add(new Goal(r.getLong("id"), r.getString("title"), Area.valueOf(r.getString("area")),
                         GoalKind.valueOf(r.getString("kind")), GoalPeriod.valueOf(r.getString("period")),
-                        r.getDouble("target"), r.getInt("manual_count"), r.getInt("auto_count_ac"),
+                        r.getDouble("target"), r.getInt("manual_count"), r.getInt("auto_count_ac") != 0,
                         r.getInt("active") == 1, Instant.parse(r.getString("created_at"))));
             }
             return out;
@@ -150,5 +152,20 @@ public class JdbcStudyRepository implements StudyRepository {
             ps.setLong(2, goalId);
             ps.executeUpdate();
         } catch (SQLException e) { throw wrap(e); }
+    }
+
+    @Override
+    public List<Instant> firstAcTimes() {
+        // mínimo calculado em Java: ran_at é Instant.toString(), cuja fração varia de tamanho
+        // e quebra a comparação de texto do MIN() do SQL
+        Map<String, Instant> first = new HashMap<>();
+        try (Connection c = db.connect(); Statement st = c.createStatement();
+             ResultSet r = st.executeQuery("SELECT source_path, ran_at FROM code_run WHERE verdict='AC'")) {
+            while (r.next()) {
+                first.merge(r.getString(1), Instant.parse(r.getString(2)),
+                        (a, b) -> a.isBefore(b) ? a : b);
+            }
+        } catch (SQLException e) { throw wrap(e); }
+        return new ArrayList<>(first.values());
     }
 }

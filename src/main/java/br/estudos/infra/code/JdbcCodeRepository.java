@@ -66,12 +66,4 @@ public class JdbcCodeRepository implements CodeRepository {
             ps.executeUpdate();
         } catch (SQLException e) { throw new IllegalStateException(e); }
     }
-
-    @Override
-    public void creditAcToCpGoals() {
-        try (Connection c = db.connect(); PreparedStatement ps = c.prepareStatement(
-                "UPDATE goal SET auto_count_ac = auto_count_ac + 1 WHERE active=1 AND kind='CONTAGEM' AND area='CP'")) {
-            ps.executeUpdate();
-        } catch (SQLException e) { throw new IllegalStateException(e); }
-    }
 }

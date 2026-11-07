@@ -4,6 +4,7 @@ import br.estudos.app.code.CodeResults.*;
 import br.estudos.infra.code.JdbcCodeRepository;
 import br.estudos.infra.db.Database;
 import br.estudos.infra.process.SystemProcessRunner;
+import br.estudos.app.study.StudyService;
 import br.estudos.infra.study.JdbcStudyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,14 @@ class CodeRunnerServiceTest {
         db = new Database(dir.resolve("t.db"));
         db.migrate();
         svc = new CodeRunnerService(new SystemProcessRunner(), new JdbcCodeRepository(db), "gcc", "g++", Duration.ofSeconds(2));
+    }
+
+    /** Meta CONTAGEM/CP que conta ACs; devolve o serviço para ler o progresso. */
+    StudyService cpAcGoal() {
+        var study = new StudyService(new JdbcStudyRepository(db), java.time.Clock.systemDefaultZone());
+        study.createGoal("CP", br.estudos.domain.Area.CP, br.estudos.domain.GoalKind.CONTAGEM,
+                br.estudos.domain.GoalPeriod.SEMANAL, 5, true);
+        return study;
     }
 
     Path src(String name, String code) throws Exception {
@@ -86,13 +95,12 @@ class CodeRunnerServiceTest {
 
     @Test
     void acCreditsCpCountGoalsAndLogsRun() throws Exception {
-        var study = new JdbcStudyRepository(db);
-        study.saveGoal(new br.estudos.domain.Goal(0, "p", br.estudos.domain.Area.CP, br.estudos.domain.GoalKind.CONTAGEM,
-                br.estudos.domain.GoalPeriod.SEMANAL, 5, 0, 0, true, java.time.Instant.now()));
+        var study = cpAcGoal();
         Path p = src("a.cpp", ECHO_DOUBLE);
         svc.addCase(p, "1\n", "2\n");
         svc.runAll(p);
-        assertEquals(1, study.goals(true).get(0).autoCountAc());
+        svc.runAll(p); // o mesmo arquivo com AC de novo não soma outra vez
+        assertEquals(1.0, study.allGoalsProgress().get(0).current());
         try (var c = db.connect(); var rs = c.createStatement().executeQuery("SELECT verdict,passed,total FROM code_run")) {
             assertTrue(rs.next());
             assertEquals("AC", rs.getString(1));
@@ -164,9 +172,7 @@ class CodeRunnerServiceTest {
 
     @Test
     void multipleCasesMixedVerdictsReportsFirstFailureAndDoesNotCreditGoals() throws Exception {
-        var study = new JdbcStudyRepository(db);
-        study.saveGoal(new br.estudos.domain.Goal(0, "CP", br.estudos.domain.Area.CP, br.estudos.domain.GoalKind.CONTAGEM,
-                br.estudos.domain.GoalPeriod.SEMANAL, 5, 0, 0, true, java.time.Instant.now()));
+        var study = cpAcGoal();
         Path p = src("mixed.cpp", ECHO_DOUBLE);
         svc.addCase(p, "1\n", "2\n");
         svc.addCase(p, "2\n", "99\n"); // WA
@@ -175,19 +181,17 @@ class CodeRunnerServiceTest {
         assertEquals(1, r.passed());
         assertEquals(2, r.total());
         assertEquals(2, r.results().size());
-        assertEquals(0, study.goals(true).get(0).autoCountAc());
+        assertEquals(0.0, study.allGoalsProgress().get(0).current());
     }
 
     @Test
     void emptyCasesDoesNotCreditGoals() throws Exception {
-        var study = new JdbcStudyRepository(db);
-        study.saveGoal(new br.estudos.domain.Goal(0, "CP", br.estudos.domain.Area.CP, br.estudos.domain.GoalKind.CONTAGEM,
-                br.estudos.domain.GoalPeriod.SEMANAL, 5, 0, 0, true, java.time.Instant.now()));
+        var study = cpAcGoal();
         Path p = src("empty_cases.cpp", ECHO_DOUBLE);
         RunReport r = svc.runAll(p);
         assertEquals(0, r.passed());
         assertEquals(0, r.total());
-        assertEquals(0, study.goals(true).get(0).autoCountAc());
+        assertEquals(0.0, study.allGoalsProgress().get(0).current());
     }
 
     @Test

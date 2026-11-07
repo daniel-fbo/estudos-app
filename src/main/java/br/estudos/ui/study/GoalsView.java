@@ -42,6 +42,16 @@ public class GoalsView {
         period.getSelectionModel().selectFirst();
         TextField target = new TextField();
         target.setPromptText("Alvo (horas ou quantidade)");
+        CheckBox countAc = new CheckBox("Contar ACs do runner");
+        countAc.setTooltip(new Tooltip("Cada arquivo com AC na tela Código soma 1 no período (só CONTAGEM em CP)"));
+        Runnable syncCountAc = () -> {
+            boolean allowed = area.getValue() == Area.CP && kind.getValue() == GoalKind.CONTAGEM;
+            countAc.setDisable(!allowed);
+            if (!allowed) countAc.setSelected(false);
+        };
+        area.setOnAction(e -> syncCountAc.run());
+        kind.setOnAction(e -> syncCountAc.run());
+        syncCountAc.run();
         Button add = new Button("Criar meta");
         add.setOnAction(e -> {
             try {
@@ -50,13 +60,14 @@ public class GoalsView {
                 Area a = area.getValue();
                 GoalKind k = kind.getValue();
                 GoalPeriod p = period.getValue();
-                mutate(() -> study.createGoal(n, a, k, p, t), () -> { name.clear(); target.clear(); });
+                boolean ac = countAc.isSelected();
+                mutate(() -> study.createGoal(n, a, k, p, t, ac), () -> { name.clear(); target.clear(); });
             } catch (NumberFormatException ex) {
                 error.setText("Alvo inválido.");
             }
         });
         error.setStyle("-fx-text-fill: #c0392b;");
-        HBox form = new HBox(8, name, area, kind, period, target, add);
+        HBox form = new HBox(8, name, area, kind, period, target, countAc, add);
         HBox.setHgrow(name, Priority.ALWAYS);
         root.getChildren().addAll(title, form, error, list);
         refresh();
@@ -102,12 +113,20 @@ public class GoalsView {
                 plus.setOnAction(e -> mutate(() -> study.adjustCount(g, 1), () -> {}));
                 actions.getChildren().addAll(minus, plus);
             }
+            if (g.kind() == GoalKind.CONTAGEM && g.area() == Area.CP) {
+                CheckBox ac = new CheckBox("Contar ACs");
+                ac.setSelected(g.countAc());
+                ac.setOnAction(e -> {
+                    boolean sel = ac.isSelected();
+                    mutate(() -> study.updateGoal(g.withCountAc(sel)), () -> {});
+                });
+                actions.getChildren().add(ac);
+            }
             CheckBox on = new CheckBox("Ativa");
             on.setSelected(g.active());
             on.setOnAction(e -> {
                 boolean sel = on.isSelected();
-                mutate(() -> study.updateGoal(new Goal(g.id(), g.title(), g.area(), g.kind(), g.period(),
-                        g.target(), g.manualCount(), g.autoCountAc(), sel, g.createdAt())), () -> {});
+                mutate(() -> study.updateGoal(g.withActive(sel)), () -> {});
             });
             Button del = new Button("Excluir");
             del.setOnAction(e -> mutate(() -> study.deleteGoal(g.id()), () -> {}));

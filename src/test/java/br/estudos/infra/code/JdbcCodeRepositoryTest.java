@@ -74,34 +74,24 @@ class JdbcCodeRepositoryTest {
     }
 
     @Test
-    void creditAcOnlyToActiveCpCountGoals() {
+    void firstAcTimesHasOneEntryPerSolvedFile() {
         var studyRepo = new JdbcStudyRepository(db);
-        Instant now = Instant.now();
+        repo.saveRun("/a.cpp", "WA", 0, 1, "");
+        repo.saveRun("/a.cpp", "AC", 1, 1, "");
+        repo.saveRun("/a.cpp", "AC", 1, 1, "");
+        repo.saveRun("/b.cpp", "TLE", 0, 1, "");
+        repo.saveRun("/c.cpp", "AC", 2, 2, "");
 
-        Goal activeCpCount = studyRepo.saveGoal(new Goal(0, "CP Count Active", Area.CP,
-                GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 10, 0, 0, true, now));
-        Goal inactiveCpCount = studyRepo.saveGoal(new Goal(0, "CP Count Inactive", Area.CP,
-                GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 10, 0, 0, false, now));
-        Goal activeCpHours = studyRepo.saveGoal(new Goal(0, "CP Hours Active", Area.CP,
-                GoalKind.HORAS, GoalPeriod.SEMANAL, 10, 0, 0, true, now));
-        Goal activeMathCount = studyRepo.saveGoal(new Goal(0, "Math Count Active", Area.MATEMATICA,
-                GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 10, 0, 0, true, now));
-
-        repo.creditAcToCpGoals();
-
-        List<Goal> all = studyRepo.goals(false);
-        assertEquals(1, findGoal(all, activeCpCount.id()).autoCountAc());
-        assertEquals(0, findGoal(all, inactiveCpCount.id()).autoCountAc());
-        assertEquals(0, findGoal(all, activeCpHours.id()).autoCountAc());
-        assertEquals(0, findGoal(all, activeMathCount.id()).autoCountAc());
-
-        repo.creditAcToCpGoals();
-        all = studyRepo.goals(false);
-        assertEquals(2, findGoal(all, activeCpCount.id()).autoCountAc());
-        assertEquals(0, findGoal(all, inactiveCpCount.id()).autoCountAc());
+        assertEquals(2, studyRepo.firstAcTimes().size());
     }
 
-    private static Goal findGoal(List<Goal> goals, long id) {
-        return goals.stream().filter(g -> g.id() == id).findFirst().orElseThrow();
+    @Test
+    void countAcFlagRoundTrips() {
+        var studyRepo = new JdbcStudyRepository(db);
+        Goal g = studyRepo.saveGoal(new Goal(0, "cp", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL,
+                5, 0, true, true, Instant.now()));
+        assertTrue(studyRepo.goals(false).get(0).countAc());
+        studyRepo.saveGoal(g.withCountAc(false));
+        assertFalse(studyRepo.goals(false).get(0).countAc());
     }
 }

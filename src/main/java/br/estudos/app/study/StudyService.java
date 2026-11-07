@@ -61,12 +61,19 @@ public class StudyService {
 
     // ---- metas ----
     public Goal createGoal(String title, Area area, GoalKind kind, GoalPeriod period, double target) {
+        return createGoal(title, area, kind, period, target, false);
+    }
+
+    /** @param countAc contar os ACs do runner (só vale para CONTAGEM em CP) */
+    public Goal createGoal(String title, Area area, GoalKind kind, GoalPeriod period, double target,
+                           boolean countAc) {
         if (title == null || title.isBlank()) throw new IllegalArgumentException("Título obrigatório");
         if (area == null || kind == null || period == null)
             throw new IllegalArgumentException("Área, tipo e período são obrigatórios");
         if (Double.isNaN(target) || Double.isInfinite(target) || target <= 0)
             throw new IllegalArgumentException("Alvo deve ser um número maior que zero");
-        return repo.saveGoal(new Goal(0, title.trim(), area, kind, period, target, 0, 0, true, clock.instant()));
+        boolean ac = countAc && kind == GoalKind.CONTAGEM && area == Area.CP;
+        return repo.saveGoal(new Goal(0, title.trim(), area, kind, period, target, 0, ac, true, clock.instant()));
     }
 
     public Goal updateGoal(Goal g) { return repo.saveGoal(g); }
@@ -104,8 +111,10 @@ public class StudyService {
         Set<LocalDate> days = new HashSet<>();
         for (Instant i : repo.allSessionStarts()) days.add(i.atZone(zone).toLocalDate());
 
+        List<Goal> goals = repo.goals(onlyActive);
+        List<Instant> firstAcs = goals.stream().anyMatch(Goal::countsAc) ? repo.firstAcTimes() : List.of();
         List<GoalProgress> gp = new ArrayList<>();
-        for (Goal g : repo.goals(onlyActive)) gp.add(StudyStats.progress(g, recent, today, zone));
+        for (Goal g : goals) gp.add(StudyStats.progress(g, recent, firstAcs, today, zone));
         return new Dashboard(StudyStats.secondsByArea(recent, weekStart, weekStart.plusWeeks(1), zone), gp,
                 StudyStats.streak(days, today), repo.lastSessions(5));
     }
