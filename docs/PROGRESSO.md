@@ -99,3 +99,12 @@ Formato:
 - importante: analyzer próprio (StandardTokenizer + LowerCase + `FoldFilter` sem acentos) no índice e na consulta; "minimos" acha "mínimos". Livros já indexados precisam ser reindexados.
 - importante: `textQuery` passa `AND`/`OR`/`NOT` soltos para minúsculas, então "Dijkstra AND" não zera a busca.
 - itens "menor" ignorados. Testes do revisor passaram sem ajuste.
+
+## M6 — Anki — 2026-11-07 — concluído
+- feito: tela **Anki** (lista com filtros área/sincronização, novo/editar/excluir card, importar `.md` do repositório, gerar de uma aula com diálogo para aprovar/editar antes de salvar, sincronizar). Tabela `card` já existia no V1 (sem migration nova); "status de sincronização" = `anki_note_id`/`synced_at` nulos ou não.
+- importação: blocos `> **Card.** …` / `> ---` / `> …` (vários por citação); área inferida do caminho (matematica, programacao→CP, xadrez, musica, senão OUTRO); dedup por SHA-256 da frente normalizada (`front_hash` UNIQUE).
+- geração: `CardService.generate` usa modelo `barato`, tarefa CARDS, aula inline (corte em 60k chars); aceita JSON `[{frente, verso}]` mesmo cercado de texto/```; limita a N; nada é salvo sem `saveDrafts`.
+- sync: `createDeck` + `addNotes` (modelo "Basic", `allowDuplicate=false`), baralho `Estudos::<Área>`; recusados (null) continuam pendentes; Anki fechado → `AnkiException.unavailable()` com mensagem pedindo para abrir o Anki.
+- interfaces públicas novas: `app.anki.CardService` (`Services.cards()`), `CardRepository` (`JdbcCardRepository`), `CardMarkdownParser`, `app.ports.AnkiClient` (`infra.http.AnkiConnectClient`), domínio `Card`, `CardOrigin`. 
+- testes: `CardServiceTest` (parser, hash, importação/dedup, geração com runner falso, sync com fake, cliente HTTP com servidor falso e sem servidor).
+- pendências: URL do AnkiConnect fixa em localhost:8765; editar card já sincronizado não atualiza a nota no Anki; `mvn javafx:run` não verificado (sem display).
