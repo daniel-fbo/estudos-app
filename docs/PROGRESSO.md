@@ -56,3 +56,20 @@ Formato:
 - progresso = `manual_count` + arquivos cujo **primeiro** AC caiu no período da meta (`StudyRepository.firstAcTimes()` lê `code_run`). Repetir AC não soma; zera por semana/mês.
 - removido `CodeRepository.creditAcToCpGoals()`; runner só grava `code_run`. Novos: `StudyService.createGoal(..., countAc)`, `Goal.withActive/withCountAc/countsAc`. 66 testes.
 - pendência: `manual_count` ainda não zera por período.
+
+## M3 — Núcleo de IA — 2026-11-07 — concluído
+- feito: `AiService` (cache por `sha256(runner+modelo+tarefa+prompt+hash dos anexos)`, "Gerar de novo" = `refresh`, orçamento diário de chamadas com confirmação, registro OK/ERRO/CANCELADO em `ai_call`); `TaskQueue` (2 threads IA + 2 gerais, histórico de 50, cancelar); telas **Tarefas** e **Uso de IA** (hoje x/limite + tokens, taxa de cache, tabelas por dia/tarefa/modelo, teste rápido Enviar/Gerar de novo). 95 testes.
+- interfaces públicas novas: `app.ports.AiRunner` (impl. `infra.ai.ClaudeCliRunner`/`AgyCliRunner`, parser `CliOutputParser`), `app.ai.AiService` (`submit(req, refresh, gate)` → `TaskHandle<AiOutcome>`, `execute` síncrono, `budget()`, `usage(dias)`, `supported(kind)`), `AiCallRepository` (impl. `JdbcAiCallRepository`), `BudgetGate` (UI: `ui.ai.FxBudgetGate`), `app.tasks.TaskQueue/TaskHandle/CancellationToken`; domínio `AiRequest`, `AiResult`, `AiCall`, `AiRunnerKind`, `AiTask`, `AiCallStatus`. `Services.tasks()`, `Services.ai()`; `Services.background()` agora é o executor geral da `TaskQueue`.
+- migration `V2__ai_call_cache_hit`: coluna `cache_hit`; acertos de cache são gravados (taxa) mas não contam no orçamento nem servem de fonte de cache.
+- CLIs: claude `-p <prompt> --output-format json [--model m] --dangerously-skip-permissions` (tokens de entrada = input + cache_creation + cache_read; custo de `total_cost_usd`); agy tem modo não interativo: `--dangerously-skip-permissions --output-format json [--model m] --print <prompt>` (sem custo). Rodam no `estudosRepo`; se a pasta não existe → erro claro (hoje `~/estudos` não existe nesta máquina).
+- teste manual (`AI_REAL=1 mvn test -Dtest=RealCliManualTest`), 2026-11-07: claude haiku → "OK", 32825/39 tokens, US$ 0,0049; agy padrão → "OK", 6914/125 tokens. `mvn javafx:run` abriu sem exceção (as telas novas não foram clicadas).
+- pendências: orçamento só por nº de chamadas (tokens só exibidos); prompt vai como argumento (limite de ~128 KB por argumento no Linux); timeout padrão 10 min por `AiRequest`, sem campo no config.
+
+### M3 — correções da revisão
+- bloqueante: `AiUsage.Row.add` sem NPE quando `costUsd` é nulo (sem ternário misto Double/double).
+- importante: `CliAiRunner` só interrompe a thread enquanto `run()` está ativo (flag `running`, desligada no `finally`).
+- importante: `TaskQueue` canceller ignora tarefa já finalizada.
+- importante: `FxBudgetGate` abre o diálogo direto se já estiver na thread JavaFX (sem deadlock).
+- importante: `CacheKeys` calcula o SHA-256 dos anexos em blocos de 64 KB.
+- importante: `CancellationToken.onCancel/cancel` sincronizados; callback roda uma só vez.
+- itens "menor" ignorados. Testes do revisor passaram sem ajuste.

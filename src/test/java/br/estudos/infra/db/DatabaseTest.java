@@ -22,7 +22,7 @@ class DatabaseTest {
     void createsAllTablesFromV1() throws Exception {
         Database db = new Database(dir.resolve("a/b/estudos.db"));
 
-        assertEquals(1, db.migrate());
+        assertEquals(2, db.migrate());
 
         Set<String> expected = Set.of("schema_version", "study_session", "goal", "code_test_case",
                 "code_run", "ai_call", "lesson", "book", "card", "cf_submission", "hint", "calendar_block");
@@ -40,6 +40,9 @@ class DatabaseTest {
             assertTrue(rs.next());
             assertEquals(1, rs.getInt(1));
             assertEquals("base", rs.getString(2));
+            assertTrue(rs.next());
+            assertEquals(2, rs.getInt(1));
+            assertEquals("ai_call_cache_hit", rs.getString(2));
             assertFalse(rs.next());
         }
     }
