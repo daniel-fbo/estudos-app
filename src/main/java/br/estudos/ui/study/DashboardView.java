@@ -49,13 +49,21 @@ public class DashboardView {
         subject.setPromptText("Assunto");
         note.setPromptText("Nota (opcional)");
         clock.setStyle("-fx-font-size: 28px; -fx-font-family: monospace;");
-        start.setOnAction(e -> { study.start(area.getValue(), subject.getText()); sync(); });
+        start.setOnAction(e -> {
+            try { study.start(area.getValue(), subject.getText()); } catch (RuntimeException ex) { showError(ex); }
+            sync();
+        });
         pause.setOnAction(e -> { if (study.paused()) study.resume(); else study.pause(); sync(); });
         stop.setOnAction(e -> { runBg(() -> study.stop(note.getText()), () -> { note.clear(); sync(); refresh(); }); });
         HBox timer = new HBox(10, clock, area, subject, note, start, pause, stop);
         timer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
-        Timeline tick = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateClock()));
+        Timeline[] ref = new Timeline[1];
+        Timeline tick = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            if (root.getScene() == null) { ref[0].stop(); return; } // tela trocada: para o relógio
+            updateClock();
+        }));
+        ref[0] = tick;
         tick.setCycleCount(Animation.INDEFINITE);
         tick.play();
 
@@ -84,8 +92,14 @@ public class DashboardView {
 
     private void runBg(Runnable work, Runnable then) {
         services.background().submit(() -> {
-            try { work.run(); } finally { Platform.runLater(then); }
+            try { work.run(); }
+            catch (Throwable t) { Platform.runLater(() -> showError(t)); }
+            finally { Platform.runLater(then); }
         });
+    }
+
+    private void showError(Throwable t) {
+        new Alert(Alert.AlertType.ERROR, "Erro: " + t.getMessage(), ButtonType.OK).show();
     }
 
     private void refresh() {

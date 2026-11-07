@@ -46,13 +46,13 @@ public class GoalsView {
         add.setOnAction(e -> {
             try {
                 double t = Double.parseDouble(target.getText().replace(',', '.').trim());
-                study.createGoal(name.getText(), area.getValue(), kind.getValue(), period.getValue(), t);
-                name.clear(); target.clear(); error.setText("");
-                refresh();
+                String n = name.getText();
+                Area a = area.getValue();
+                GoalKind k = kind.getValue();
+                GoalPeriod p = period.getValue();
+                mutate(() -> study.createGoal(n, a, k, p, t), () -> { name.clear(); target.clear(); });
             } catch (NumberFormatException ex) {
                 error.setText("Alvo inválido.");
-            } catch (IllegalArgumentException ex) {
-                error.setText(ex.getMessage());
             }
         });
         error.setStyle("-fx-text-fill: #c0392b;");
@@ -66,37 +66,51 @@ public class GoalsView {
 
     private void refresh() {
         services.background().submit(() -> {
-            List<Goal> goals = study.goals();
-            // reaproveita o cálculo do painel para obter o progresso de todas (inclui inativas)
-            var dash = study.dashboard();
-            Platform.runLater(() -> render(goals, dash.goals()));
+            try {
+                List<GoalProgress> all = study.allGoalsProgress(); // inclui inativas
+                Platform.runLater(() -> render(all));
+            } catch (RuntimeException ex) {
+                Platform.runLater(() -> error.setText("Erro: " + ex.getMessage()));
+            }
         });
     }
 
-    private void render(List<Goal> goals, List<GoalProgress> active) {
+    /** Executa a mutação fora da thread do JavaFX; depois atualiza a tela (ou mostra o erro). */
+    private void mutate(Runnable work, Runnable onOk) {
+        services.background().submit(() -> {
+            try {
+                work.run();
+                Platform.runLater(() -> { error.setText(""); onOk.run(); });
+            } catch (RuntimeException ex) {
+                Platform.runLater(() -> error.setText(ex.getMessage()));
+            }
+            refresh();
+        });
+    }
+
+    private void render(List<GoalProgress> all) {
         list.getChildren().clear();
-        if (goals.isEmpty()) list.getChildren().add(new Label("Nenhuma meta cadastrada."));
-        for (Goal g : goals) {
-            GoalProgress p = active.stream().filter(x -> x.goal().id() == g.id()).findFirst()
-                    .orElse(new GoalProgress(g, 0, g.target()));
+        if (all.isEmpty()) list.getChildren().add(new Label("Nenhuma meta cadastrada."));
+        for (GoalProgress p : all) {
+            Goal g = p.goal();
             VBox row = new VBox(4);
             HBox actions = new HBox(6);
             if (g.kind() == GoalKind.CONTAGEM) {
                 Button minus = new Button("−");
                 Button plus = new Button("+");
-                minus.setOnAction(e -> { study.adjustCount(g, -1); refresh(); });
-                plus.setOnAction(e -> { study.adjustCount(g, 1); refresh(); });
+                minus.setOnAction(e -> mutate(() -> study.adjustCount(g, -1), () -> {}));
+                plus.setOnAction(e -> mutate(() -> study.adjustCount(g, 1), () -> {}));
                 actions.getChildren().addAll(minus, plus);
             }
             CheckBox on = new CheckBox("Ativa");
             on.setSelected(g.active());
             on.setOnAction(e -> {
-                study.updateGoal(new Goal(g.id(), g.title(), g.area(), g.kind(), g.period(), g.target(),
-                        g.manualCount(), g.autoCountAc(), on.isSelected(), g.createdAt()));
-                refresh();
+                boolean sel = on.isSelected();
+                mutate(() -> study.updateGoal(new Goal(g.id(), g.title(), g.area(), g.kind(), g.period(),
+                        g.target(), g.manualCount(), g.autoCountAc(), sel, g.createdAt())), () -> {});
             });
             Button del = new Button("Excluir");
-            del.setOnAction(e -> { study.deleteGoal(g.id()); refresh(); });
+            del.setOnAction(e -> mutate(() -> study.deleteGoal(g.id()), () -> {}));
             actions.getChildren().addAll(on, del);
             row.getChildren().addAll(progressRow(p), actions);
             list.getChildren().add(row);

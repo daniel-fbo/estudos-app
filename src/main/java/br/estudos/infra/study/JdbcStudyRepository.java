@@ -23,7 +23,7 @@ public class JdbcStudyRepository implements StudyRepository {
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, s.area().name());
             ps.setString(2, s.subject());
-            ps.setString(3, s.startedAt().toString());
+            ps.setString(3, s.startedAt().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString());
             ps.setString(4, s.endedAt() == null ? null : s.endedAt().toString());
             ps.setLong(5, s.durationSeconds());
             ps.setString(6, s.note());
@@ -54,9 +54,11 @@ public class JdbcStudyRepository implements StudyRepository {
 
     @Override
     public List<StudySession> sessionsSince(Instant from) {
-        // ISO-8601 UTC em texto ordena lexicograficamente (mesmo formato do Instant.toString, salvo frações)
-        return querySessions("SELECT * FROM study_session WHERE ended_at IS NOT NULL AND started_at >= ?",
-                from.toString());
+        // Texto ISO-8601 UTC: compara com o prefixo sem o "Z" final, para que valores com fração
+        // ("...:00.100Z") não fiquem abaixo de "...:00Z" na ordenação lexicográfica.
+        String prefix = from.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString();
+        prefix = prefix.substring(0, prefix.length() - 1);
+        return querySessions("SELECT * FROM study_session WHERE ended_at IS NOT NULL AND started_at >= ?", prefix);
     }
 
     @Override

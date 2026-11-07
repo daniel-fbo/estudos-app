@@ -27,3 +27,12 @@ Formato:
 - regras: semana começa na segunda; sequência não zera se só hoje ainda não teve estudo; progresso de CONTAGEM = `manual_count + auto_count_ac` (não zera a cada período); só sessões encerradas contam.
 - pendências: sem edição de título/alvo de meta existente (só criar/ativar/excluir); sessão em andamento se perde se o app fechar; sem fake de repositório (testes usam SQLite temporário).
 - notas: `auto_count_ac` fica para M5/M6 (Codeforces) preencher; `StudyService.dashboard()` roda fora da thread JavaFX.
+
+### M1 — correções da revisão
+- bloqueante: GoalsView — criar/ajustar/ativar/excluir meta agora rodam em `services.background()` (`mutate`) e atualizam a UI com `Platform.runLater`; erros aparecem na tela.
+- bloqueante: metas inativas mostravam 0 — novo `StudyService.allGoalsProgress()` (todas as metas) usado por GoalsView.
+- bloqueante: `started_at` gravado truncado em segundos e `sessionsSince` compara com prefixo sem "Z" (cobre dados com fração).
+- importante: `Timeline` do Painel para sozinho quando a tela sai da cena.
+- importante: `createGoal` rejeita NaN/infinito; `createGoal`/`start` rejeitam enums nulos (IllegalArgumentException).
+- importante: `runBg` do Painel captura Throwable e mostra Alert; `start` também mostra erro.
+- itens "menor" ignorados (exceto `adjustCount` só para CONTAGEM, feito junto). Testes do revisor passaram sem ajuste.

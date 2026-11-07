@@ -98,4 +98,60 @@ class StudyStatsTest {
         assertTrue(p.done());
         assertEquals(0.4, StudyStats.progress(goal(GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 5, Area.CP, 2), List.of(), TODAY, Z).fraction(), 1e-9);
     }
+
+    @Test
+    void streakLeapYear() {
+        LocalDate feb28 = LocalDate.of(2024, 2, 28);
+        LocalDate feb29 = LocalDate.of(2024, 2, 29);
+        LocalDate mar1 = LocalDate.of(2024, 3, 1);
+        assertEquals(3, StudyStats.streak(List.of(feb28, feb29, mar1), mar1));
+    }
+
+    @Test
+    void streakWithFutureDays() {
+        LocalDate tomorrow = TODAY.plusDays(1);
+        assertEquals(1, StudyStats.streak(List.of(TODAY, tomorrow), TODAY));
+    }
+
+    @Test
+    void streakSingleDayYesterday() {
+        assertEquals(1, StudyStats.streak(List.of(TODAY.minusDays(1)), TODAY));
+    }
+
+    @Test
+    void periodStartAndEndYearTransition() {
+        LocalDate dec31 = LocalDate.of(2026, 12, 31); // quinta
+        assertEquals(LocalDate.of(2026, 12, 28), StudyStats.periodStart(GoalPeriod.SEMANAL, dec31));
+        assertEquals(LocalDate.of(2027, 1, 4), StudyStats.periodEnd(GoalPeriod.SEMANAL, dec31));
+        assertEquals(LocalDate.of(2026, 12, 1), StudyStats.periodStart(GoalPeriod.MENSAL, dec31));
+        assertEquals(LocalDate.of(2027, 1, 1), StudyStats.periodEnd(GoalPeriod.MENSAL, dec31));
+    }
+
+    @Test
+    void secondsByAreaBoundaryAndEmpty() {
+        assertTrue(StudyStats.secondsByArea(List.of(), TODAY, TODAY.plusDays(7), Z).isEmpty());
+
+        LocalDate from = LocalDate.of(2026, 11, 2);
+        LocalDate to = LocalDate.of(2026, 11, 9);
+        var sessions = List.of(
+                ses(Area.MATEMATICA, from, 1200), // exatamente no limite inferior (inclusivo)
+                ses(Area.MATEMATICA, to, 3600)    // exatamente no limite superior (exclusivo)
+        );
+        Map<Area, Long> m = StudyStats.secondsByArea(sessions, from, to, Z);
+        assertEquals(1200L, m.get(Area.MATEMATICA));
+    }
+
+    @Test
+    void goalProgressZeroTargetAndAutoCount() {
+        Goal zeroTarget = new Goal(1, "zero", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 0, 0, 0, true, Instant.EPOCH);
+        GoalProgress gpZero = new GoalProgress(zeroTarget, 0, 0);
+        assertEquals(0.0, gpZero.fraction());
+        assertTrue(gpZero.done());
+
+        Goal countWithAuto = new Goal(2, "ac", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 10, 4, 6, true, Instant.EPOCH);
+        GoalProgress gpAuto = StudyStats.progress(countWithAuto, List.of(), TODAY, Z);
+        assertEquals(10.0, gpAuto.current());
+        assertEquals(1.0, gpAuto.fraction());
+        assertTrue(gpAuto.done());
+    }
 }

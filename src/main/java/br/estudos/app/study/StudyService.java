@@ -23,6 +23,7 @@ public class StudyService {
 
     // ---- cronômetro ----
     public synchronized void start(Area area, String subject) {
+        if (area == null) throw new IllegalArgumentException("Área obrigatória");
         if (runStart != null) throw new IllegalStateException("Já há uma sessão em andamento");
         runArea = area; runSubject = subject; runStart = clock.instant(); pausedAt = null; pausedTotal = 0;
     }
@@ -61,7 +62,10 @@ public class StudyService {
     // ---- metas ----
     public Goal createGoal(String title, Area area, GoalKind kind, GoalPeriod period, double target) {
         if (title == null || title.isBlank()) throw new IllegalArgumentException("Título obrigatório");
-        if (target <= 0) throw new IllegalArgumentException("Alvo deve ser maior que zero");
+        if (area == null || kind == null || period == null)
+            throw new IllegalArgumentException("Área, tipo e período são obrigatórios");
+        if (Double.isNaN(target) || Double.isInfinite(target) || target <= 0)
+            throw new IllegalArgumentException("Alvo deve ser um número maior que zero");
         return repo.saveGoal(new Goal(0, title.trim(), area, kind, period, target, 0, 0, true, clock.instant()));
     }
 
@@ -70,6 +74,7 @@ public class StudyService {
     public List<Goal> goals() { return repo.goals(false); }
 
     public Goal adjustCount(Goal g, int delta) {
+        if (g.kind() != GoalKind.CONTAGEM) throw new IllegalArgumentException("Só metas de contagem têm contador");
         int c = Math.max(0, g.manualCount() + delta);
         repo.setManualCount(g.id(), c);
         return g.withManualCount(c);
@@ -80,6 +85,15 @@ public class StudyService {
                             List<StudySession> lastSessions) {}
 
     public Dashboard dashboard() {
+        return buildDashboard(true);
+    }
+
+    /** Progresso de todas as metas (ativas e inativas), na ordem de {@link #goals()}. */
+    public List<GoalProgress> allGoalsProgress() {
+        return buildDashboard(false).goals();
+    }
+
+    private Dashboard buildDashboard(boolean onlyActive) {
         ZoneId zone = clock.getZone();
         LocalDate today = LocalDate.now(clock);
         LocalDate weekStart = StudyStats.periodStart(GoalPeriod.SEMANAL, today);
@@ -91,7 +105,7 @@ public class StudyService {
         for (Instant i : repo.allSessionStarts()) days.add(i.atZone(zone).toLocalDate());
 
         List<GoalProgress> gp = new ArrayList<>();
-        for (Goal g : repo.goals(true)) gp.add(StudyStats.progress(g, recent, today, zone));
+        for (Goal g : repo.goals(onlyActive)) gp.add(StudyStats.progress(g, recent, today, zone));
         return new Dashboard(StudyStats.secondsByArea(recent, weekStart, weekStart.plusWeeks(1), zone), gp,
                 StudyStats.streak(days, today), repo.lastSessions(5));
     }
