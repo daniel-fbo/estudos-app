@@ -93,3 +93,9 @@ Formato:
 - interfaces públicas novas: `app.library.LibraryService` (`Services.library()`), `BookRepository` (impl. `JdbcBookRepository`), `PdfReader` (`PdfBoxReader`), `PageIndex` (`LucenePageIndex`); domínio `Book`, `BookKind`, `BookStatus`.
 - testes: `LibraryServiceTest` com 2 PDFs gerados via PDFBox (importar, buscar, reimportar, progresso, excluir, perguntas com runners falsos). Todos passam.
 - pendências: "alimenta metas" não implementado (a página atual só fica em `book.current_page`; metas não leem isso ainda); texto de PDFs escaneados não é extraído (sem OCR); `mvn javafx:run` não verificado (sem display).
+
+### M5 — correções da revisão
+- importante: `snippet` compara com `fold()` (minúsculas/sem acento que preserva o comprimento), sem `StringIndexOutOfBounds` em textos como `İ`.
+- importante: analyzer próprio (StandardTokenizer + LowerCase + `FoldFilter` sem acentos) no índice e na consulta; "minimos" acha "mínimos". Livros já indexados precisam ser reindexados.
+- importante: `textQuery` passa `AND`/`OR`/`NOT` soltos para minúsculas, então "Dijkstra AND" não zera a busca.
+- itens "menor" ignorados. Testes do revisor passaram sem ajuste.

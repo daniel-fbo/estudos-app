@@ -1,7 +1,12 @@
 package br.estudos.infra.library;
 
 import br.estudos.app.library.PageIndex;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.LowerCaseFilter;
+import org.apache.lucene.analysis.TokenFilter;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -19,7 +24,40 @@ import java.util.Locale;
 /** Um documento Lucene por página: {@code book} (id), {@code page}, {@code text}. */
 public class LucenePageIndex implements PageIndex, AutoCloseable {
     private final Directory dir;
-    private final StandardAnalyzer analyzer = new StandardAnalyzer();
+    private final Analyzer analyzer = new Analyzer() {
+        @Override
+        protected TokenStreamComponents createComponents(String field) {
+            StandardTokenizer src = new StandardTokenizer();
+            TokenStream ts = new FoldFilter(new LowerCaseFilter(src));
+            return new TokenStreamComponents(src, ts);
+        }
+    };
+
+    /** Remove acentos de cada token (mínimos → minimos). */
+    private static final class FoldFilter extends TokenFilter {
+        private final CharTermAttribute term = addAttribute(CharTermAttribute.class);
+        FoldFilter(TokenStream in) { super(in); }
+        @Override
+        public boolean incrementToken() throws IOException {
+            if (!input.incrementToken()) return false;
+            String f = fold(term.toString());
+            term.setEmpty().append(f);
+            return true;
+        }
+    }
+
+    /** Minúsculas sem acento, preservando o comprimento (1 char → 1 char). */
+    static String fold(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            String n = java.text.Normalizer.normalize(String.valueOf(c), java.text.Normalizer.Form.NFD);
+            char b = n.isEmpty() ? c : n.charAt(0);
+            char l = Character.toLowerCase(b);
+            sb.append(Character.isLetterOrDigit(l) || !Character.isLetterOrDigit(c) ? l : c);
+        }
+        return sb.toString();
+    }
     private final IndexWriter writer;
 
     public LucenePageIndex(Path folder) throws IOException {
@@ -79,7 +117,11 @@ public class LucenePageIndex implements PageIndex, AutoCloseable {
     private Query textQuery(String query) {
         if (query == null || query.isBlank()) return null;
         try {
-            return new QueryParser("text", analyzer).parse(QueryParser.escape(query.trim()));
+            String safe = QueryParser.escape(query.trim());
+            safe = java.util.Arrays.stream(safe.split("\\s+"))
+                    .map(w -> w.equals("AND") || w.equals("OR") || w.equals("NOT") ? w.toLowerCase(Locale.ROOT) : w)
+                    .collect(java.util.stream.Collectors.joining(" "));
+            return new QueryParser("text", analyzer).parse(safe);
         } catch (ParseException e) {
             return null;
         }
@@ -103,8 +145,8 @@ public class LucenePageIndex implements PageIndex, AutoCloseable {
     static String snippet(String text, String query) {
         String flat = text.replaceAll("\\s+", " ").trim();
         List<String> terms = new ArrayList<>();
-        for (String t : query.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")) if (t.length() > 1) terms.add(t);
-        String low = flat.toLowerCase(Locale.ROOT);
+        for (String t : fold(query).split("[^\\p{L}\\p{N}]+")) if (t.length() > 1) terms.add(t);
+        String low = fold(flat);
         int first = -1;
         for (String t : terms) {
             int i = low.indexOf(t);
