@@ -47,6 +47,7 @@ public final class Services implements AutoCloseable {
     private final br.estudos.app.library.LibraryService libraryService;
     private final br.estudos.app.anki.CardService cardService;
     private final br.estudos.app.cf.CfService cfService;
+    private final br.estudos.app.calendar.CalendarService calendarService;
 
     private Services(Path home, ConfigStore configStore, Config config, Database database,
                      ProcessRunner processRunner) throws IOException {
@@ -78,6 +79,9 @@ public final class Services implements AutoCloseable {
                 new br.estudos.infra.http.CodeforcesHttpClient(br.estudos.infra.http.CodeforcesHttpClient.DEFAULT_URL,
                         br.estudos.infra.http.CodeforcesHttpClient.MIN_INTERVAL_MS),
                 aiService, () -> this.config, clock);
+        this.calendarService = new br.estudos.app.calendar.CalendarService(
+                new br.estudos.infra.calendar.JdbcCalendarRepository(database),
+                new br.estudos.infra.google.GoogleCalendarClient(home.resolve("google")), studyService, clock);
     }
 
     public static Services create(Path home) throws IOException, SQLException {
@@ -108,6 +112,7 @@ public final class Services implements AutoCloseable {
     public br.estudos.app.library.LibraryService library() { return libraryService; }
     public br.estudos.app.anki.CardService cards() { return cardService; }
     public br.estudos.app.cf.CfService cf() { return cfService; }
+    public br.estudos.app.calendar.CalendarService calendar() { return calendarService; }
 
     public void saveConfig(Config newConfig) throws IOException {
         configStore.save(newConfig);
