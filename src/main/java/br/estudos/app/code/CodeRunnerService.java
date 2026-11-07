@@ -90,7 +90,7 @@ public class CodeRunnerService {
                 if (cr.verdict() != Verdict.AC)
                     detail.append("caso ").append(cr.testCase().id()).append(' ').append(cr.verdict())
                           .append(": ").append(cr.detail()).append('\n');
-            repo.saveRun(k, worst.name(), passed, cases.size(), detail.toString());
+            if (!cases.isEmpty()) repo.saveRun(k, worst.name(), passed, cases.size(), detail.toString());
             if (worst == Verdict.AC && !cases.isEmpty()) repo.creditAcToCpGoals();
             return new RunReport(worst, passed, cases.size(), results, c.output());
         } finally {
@@ -99,7 +99,7 @@ public class CodeRunnerService {
     }
 
     private CaseResult runCase(Path binary, TestCase tc) throws IOException {
-        ProcessResult r = runner.run(new ProcessRequest(List.of(binary.toString()), null, tc.input(), caseTimeout, null));
+        ProcessResult r = runner.run(new ProcessRequest(List.of(binary.toString()), binary.getParent(), tc.input(), caseTimeout, null));
         if (r.timedOut()) return new CaseResult(tc, Verdict.TLE, r.stdout(), "excedeu " + caseTimeout.toMillis() + " ms");
         if (r.exitCode() != 0) return new CaseResult(tc, Verdict.RE, r.stdout(),
                 "código de saída " + r.exitCode() + "\n" + r.stderr());
@@ -114,6 +114,7 @@ public class CodeRunnerService {
      */
     public StressResult stress(Path solution, Path brute, Path generator, int iterations, BooleanSupplier cancelled)
             throws IOException {
+        if (iterations <= 0) throw new IllegalArgumentException("iterations deve ser > 0");
         CompileResult sol = compile(solution), br = null, gen = null;
         try {
             if (!sol.ok()) return new StressResult(false, 0, null, "Erro ao compilar a solução:\n" + sol.output());

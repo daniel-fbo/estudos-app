@@ -116,10 +116,10 @@ public class CodeView {
         } catch (Exception e) { error(e); }
     }
 
-    private void save() {
-        if (current == null) return;
-        try { Files.writeString(current, editor.getText()); status.setText("Salvo."); }
-        catch (Exception e) { error(e); }
+    private boolean save() {
+        if (current == null) return false;
+        try { Files.writeString(current, editor.getText()); status.setText("Salvo."); return true; }
+        catch (Exception e) { error(e); return false; }
     }
 
     private void refreshCases() {
@@ -143,7 +143,7 @@ public class CodeView {
 
     private void runAll() {
         if (current == null) return;
-        save();
+        if (!save()) return;
         Path p = current;
         status.setText("Compilando e rodando…");
         bg(() -> services.code().runAll(p), this::showReport);
@@ -160,6 +160,7 @@ public class CodeView {
             }
         }
         output.setText(sb.toString());
+        if (r.verdict() != Verdict.CE && r.total() == 0) { status.setText("Nenhum caso de teste cadastrado."); return; }
         status.setText("Veredito: " + r.verdict() + " (" + r.passed() + "/" + r.total() + ")");
     }
 
@@ -179,8 +180,9 @@ public class CodeView {
         var n = d.showAndWait();
         if (n.isEmpty()) return;
         int iters;
-        try { iters = Integer.parseInt(n.get().trim()); } catch (NumberFormatException e) { return; }
-        save();
+        try { iters = Integer.parseInt(n.get().trim()); } catch (NumberFormatException e) { iters = 0; }
+        if (iters <= 0) { status.setText("Informe um número inteiro maior que zero."); return; }
+        if (!save()) return;
         stressCancel.set(false);
         status.setText("Stress test rodando…");
         int it = iters;

@@ -119,4 +119,83 @@ class CodeRunnerServiceTest {
         assertFalse(r.diverged());
         assertTrue(svc.cases(sol).isEmpty());
     }
+
+    @Test
+    void stressWithCppGenerator() throws Exception {
+        Path sol = src("sol2.cpp", "#include <cstdio>\nint main(){int x;scanf(\"%d\",&x);printf(\"%d\\n\",x==3?0:x);}\n");
+        Path brute = src("brute2.cpp", "#include <cstdio>\nint main(){int x;scanf(\"%d\",&x);printf(\"%d\\n\",x);}\n");
+        Path gen = src("gen.cpp", "#include <cstdio>\n#include <cstdlib>\nint main(int, char** argv){printf(\"%d\\n\",atoi(argv[1]));}\n");
+        StressResult r = svc.stress(sol, brute, gen, 10, () -> false);
+        assertTrue(r.diverged());
+        assertEquals("3\n", r.newCase().input());
+        assertEquals("STRESS", svc.cases(sol).get(0).origin());
+    }
+
+    @Test
+    void stressCanBeCancelled() throws Exception {
+        Path sol = src("sol3.cpp", ECHO_DOUBLE);
+        Path gen = src("gen3.py", "import sys\nprint(int(sys.argv[1]))\n");
+        var count = new java.util.concurrent.atomic.AtomicInteger();
+        StressResult r = svc.stress(sol, sol, gen, 20, () -> count.incrementAndGet() >= 3);
+        assertFalse(r.diverged());
+        assertTrue(r.message().contains("Cancelado após"));
+        assertTrue(r.iterations() < 20);
+    }
+
+    @Test
+    void stressGeneratorCompileError() throws Exception {
+        Path sol = src("sol4.cpp", ECHO_DOUBLE);
+        Path brute = src("brute4.cpp", ECHO_DOUBLE);
+        Path gen = src("gen_bad.cpp", "int main(){ return invalid_syntax; }\n");
+        StressResult r = svc.stress(sol, brute, gen, 5, () -> false);
+        assertFalse(r.diverged());
+        assertTrue(r.message().contains("Erro ao compilar o gerador"));
+    }
+
+    @Test
+    void stressBruteCompileError() throws Exception {
+        Path sol = src("sol5.cpp", ECHO_DOUBLE);
+        Path brute = src("brute_bad.cpp", "int main(){ return invalid_syntax; }\n");
+        Path gen = src("gen5.py", "import sys\nprint(int(sys.argv[1]))\n");
+        StressResult r = svc.stress(sol, brute, gen, 5, () -> false);
+        assertFalse(r.diverged());
+        assertTrue(r.message().contains("Erro ao compilar a força bruta"));
+    }
+
+    @Test
+    void multipleCasesMixedVerdictsReportsFirstFailureAndDoesNotCreditGoals() throws Exception {
+        var study = new JdbcStudyRepository(db);
+        study.saveGoal(new br.estudos.domain.Goal(0, "CP", br.estudos.domain.Area.CP, br.estudos.domain.GoalKind.CONTAGEM,
+                br.estudos.domain.GoalPeriod.SEMANAL, 5, 0, 0, true, java.time.Instant.now()));
+        Path p = src("mixed.cpp", ECHO_DOUBLE);
+        svc.addCase(p, "1\n", "2\n");
+        svc.addCase(p, "2\n", "99\n"); // WA
+        RunReport r = svc.runAll(p);
+        assertEquals(Verdict.WA, r.verdict());
+        assertEquals(1, r.passed());
+        assertEquals(2, r.total());
+        assertEquals(2, r.results().size());
+        assertEquals(0, study.goals(true).get(0).autoCountAc());
+    }
+
+    @Test
+    void emptyCasesDoesNotCreditGoals() throws Exception {
+        var study = new JdbcStudyRepository(db);
+        study.saveGoal(new br.estudos.domain.Goal(0, "CP", br.estudos.domain.Area.CP, br.estudos.domain.GoalKind.CONTAGEM,
+                br.estudos.domain.GoalPeriod.SEMANAL, 5, 0, 0, true, java.time.Instant.now()));
+        Path p = src("empty_cases.cpp", ECHO_DOUBLE);
+        RunReport r = svc.runAll(p);
+        assertEquals(0, r.passed());
+        assertEquals(0, r.total());
+        assertEquals(0, study.goals(true).get(0).autoCountAc());
+    }
+
+    @Test
+    void deleteCaseRemovesCase() throws Exception {
+        Path p = src("del.cpp", ECHO_DOUBLE);
+        var tc = svc.addCase(p, "1\n", "2\n");
+        assertEquals(1, svc.cases(p).size());
+        svc.deleteCase(tc.id());
+        assertTrue(svc.cases(p).isEmpty());
+    }
 }

@@ -43,3 +43,10 @@ Formato:
 - stress: gerador recebe o nº da iteração em `argv[1]` (`.py` via `python3`, ou `.cpp`/`.c`); para na 1ª divergência e salva o caso (origin STRESS, esperado = saída da força bruta).
 - decisão: `auto_count_ac` é contador (M1); um AC (todos os casos passam, ≥1 caso) soma +1 em toda meta ativa CONTAGEM/CP, em vez do "= 1" da SPEC.
 - pendências: o mesmo AC repetido soma de novo; caminhos dos compiladores vêm de `Config.gccPath/gppPath`; sem teste de UI nem `mvn javafx:run` verificado (ambiente sem display).
+
+### M2 — correções da revisão
+- importante: CodeView `save()` agora retorna boolean; `runAll`/stress abortam se o salvamento falhar.
+- importante: sem casos de teste, `runAll` não grava `code_run` e a UI mostra "Nenhum caso de teste cadastrado."
+- importante: `stress` lança IllegalArgumentException se `iterations <= 0`; a UI valida inteiro > 0.
+- importante: `runCase` executa o binário com `workDir = binary.getParent()` (temp isolado).
+- itens "menor" ignorados. Testes do revisor passaram sem ajuste.
