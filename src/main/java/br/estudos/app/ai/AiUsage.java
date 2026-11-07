@@ -17,7 +17,8 @@ public record AiUsage(Map<String, Row> byDay, Map<String, Row> byTask, Map<Strin
     public record Row(long calls, long cacheHits, long inputTokens, long outputTokens, Double costUsd) {
         Row add(AiCall c) {
             if (c.cacheHit()) return new Row(calls, cacheHits + 1, inputTokens, outputTokens, costUsd);
-            Double cost = c.costUsd() == null ? costUsd : (costUsd == null ? 0 : costUsd) + c.costUsd();
+            Double cost = costUsd;
+            if (c.costUsd() != null) cost = (cost == null ? 0.0 : cost) + c.costUsd();
             return new Row(calls + 1, cacheHits,
                     inputTokens + (c.inputTokens() == null ? 0 : c.inputTokens()),
                     outputTokens + (c.outputTokens() == null ? 0 : c.outputTokens()), cost);

@@ -90,4 +90,66 @@ class CliRunnersTest {
             assertEquals(new AiResult("oi", null, null, null), r);
         });
     }
+
+    @Test
+    void claudeParserHandlesEmptyResultAndMissingFields() throws Exception {
+        AiResult empty = CliOutputParser.claude("{\"result\":\"\"}");
+        assertEquals("", empty.response());
+        assertNull(empty.inputTokens());
+        assertNull(empty.outputTokens());
+        assertNull(empty.costUsd());
+
+        var ex = assertThrows(AiException.class, () -> CliOutputParser.claude("{\"is_error\":false}"));
+        assertTrue(ex.getMessage().contains("sem campo 'result'"));
+    }
+
+    @Test
+    void agyParserHandlesWhitespaceAndTokens() throws Exception {
+        String json = """
+                {"status":"SUCCESS","response":"  resultado com espaços  \\n",
+                 "usage":{"input_tokens":100,"cache_read_tokens":50,"output_tokens":20,"thinking_tokens":10}}
+                """;
+        AiResult r = CliOutputParser.agy(json);
+        assertEquals("resultado com espaços", r.response());
+        assertEquals(150L, r.inputTokens());
+        assertEquals(30L, r.outputTokens());
+        assertNull(r.costUsd());
+
+        assertThrows(AiException.class, () -> CliOutputParser.agy("{\"status\":\"TIMEOUT\",\"response\":\"x\"}"));
+        assertThrows(AiException.class, () -> CliOutputParser.agy("{\"status\":\"SUCCESS\"}"));
+    }
+
+    @Test
+    void preCancelledTokenThrowsImmediatelyWithoutCallingProcess() {
+        FakeProcesses p = new FakeProcesses(ok(CLAUDE_OUT));
+        var r = new ClaudeCliRunner(p, () -> "claude", () -> dir);
+        CancellationToken tok = new CancellationToken();
+        tok.cancel();
+
+        assertThrows(java.util.concurrent.CancellationException.class,
+                () -> r.run(AiRequest.of(AiRunnerKind.CLAUDE, null, AiTask.OUTRO, "oi"), tok));
+        assertNull(p.last.get());
+    }
+
+    @Test
+    void abbreviateTruncatesLongStrings() {
+        String longText = "a".repeat(400);
+        String abbr = CliOutputParser.abbreviate(longText);
+        assertEquals(301, abbr.length());
+        assertTrue(abbr.endsWith("…"));
+    }
+
+    @Test
+    void tokenCancellationAfterCompletionMustNotInterruptWorkerThread() throws Exception {
+        FakeProcesses p = new FakeProcesses(ok(CLAUDE_OUT));
+        var r = new ClaudeCliRunner(p, () -> "/bin/claude", () -> dir);
+        CancellationToken token = new CancellationToken();
+        r.run(AiRequest.of(AiRunnerKind.CLAUDE, "haiku", AiTask.OUTRO, "oi"), token);
+        assertFalse(Thread.currentThread().isInterrupted());
+
+        // Cancel the token after completion
+        token.cancel();
+        boolean interrupted = Thread.interrupted();
+        assertFalse(interrupted, "Worker thread should not be interrupted after task completes");
+    }
 }

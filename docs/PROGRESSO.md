@@ -64,3 +64,12 @@ Formato:
 - CLIs: claude `-p <prompt> --output-format json [--model m] --dangerously-skip-permissions` (tokens de entrada = input + cache_creation + cache_read; custo de `total_cost_usd`); agy tem modo não interativo: `--dangerously-skip-permissions --output-format json [--model m] --print <prompt>` (sem custo). Rodam no `estudosRepo`; se a pasta não existe → erro claro (hoje `~/estudos` não existe nesta máquina).
 - teste manual (`AI_REAL=1 mvn test -Dtest=RealCliManualTest`), 2026-11-07: claude haiku → "OK", 32825/39 tokens, US$ 0,0049; agy padrão → "OK", 6914/125 tokens. `mvn javafx:run` abriu sem exceção (as telas novas não foram clicadas).
 - pendências: orçamento só por nº de chamadas (tokens só exibidos); prompt vai como argumento (limite de ~128 KB por argumento no Linux); timeout padrão 10 min por `AiRequest`, sem campo no config.
+
+### M3 — correções da revisão
+- bloqueante: `AiUsage.Row.add` sem NPE quando `costUsd` é nulo (sem ternário misto Double/double).
+- importante: `CliAiRunner` só interrompe a thread enquanto `run()` está ativo (flag `running`, desligada no `finally`).
+- importante: `TaskQueue` canceller ignora tarefa já finalizada.
+- importante: `FxBudgetGate` abre o diálogo direto se já estiver na thread JavaFX (sem deadlock).
+- importante: `CacheKeys` calcula o SHA-256 dos anexos em blocos de 64 KB.
+- importante: `CancellationToken.onCancel/cancel` sincronizados; callback roda uma só vez.
+- itens "menor" ignorados. Testes do revisor passaram sem ajuste.

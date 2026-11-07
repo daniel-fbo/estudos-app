@@ -15,9 +15,14 @@ public final class CancellationToken {
     }
 
     public void cancel() {
-        if (cancelled) return;
-        cancelled = true;
-        callbacks.forEach(Runnable::run);
+        List<Runnable> toRun;
+        synchronized (this) {
+            if (cancelled) return;
+            cancelled = true;
+            toRun = List.copyOf(callbacks);
+            callbacks.clear();
+        }
+        toRun.forEach(Runnable::run);
     }
 
     public boolean isCancelled() {
@@ -30,7 +35,12 @@ public final class CancellationToken {
 
     /** Registra um callback; se já estiver cancelado, roda na hora. */
     public void onCancel(Runnable r) {
-        callbacks.add(r);
-        if (cancelled) r.run();
+        synchronized (this) {
+            if (!cancelled) {
+                callbacks.add(r);
+                return;
+            }
+        }
+        r.run();
     }
 }

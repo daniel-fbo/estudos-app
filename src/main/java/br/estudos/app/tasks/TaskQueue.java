@@ -87,7 +87,9 @@ public final class TaskQueue implements AutoCloseable {
             }
         });
         Runnable canceller = () -> {
-            boolean wasQueued = state(id) == TaskState.NA_FILA;
+            TaskState cur = state(id);
+            if (cur != null && cur.finished()) return;
+            boolean wasQueued = cur == TaskState.NA_FILA;
             token.cancel();
             f.cancel(true);
             if (wasQueued) {

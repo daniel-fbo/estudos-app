@@ -21,9 +21,21 @@ public final class CacheKeys {
           .append(req.task()).append('\n')
           .append(req.prompt()).append('\n');
         for (Path p : req.attachments()) {
-            sb.append(p.getFileName()).append(':').append(sha256(Files.readAllBytes(p))).append('\n');
+            sb.append(p.getFileName()).append(':').append(sha256(p)).append('\n');
         }
         return sha256(sb.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    static String sha256(Path file) throws IOException {
+        try (java.io.InputStream in = Files.newInputStream(file)) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[64 * 1024];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            return HexFormat.of().formatHex(md.digest());
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     static String sha256(byte[] data) {

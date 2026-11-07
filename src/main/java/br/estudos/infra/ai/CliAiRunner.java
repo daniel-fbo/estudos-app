@@ -50,7 +50,8 @@ abstract class CliAiRunner implements AiRunner {
         ProcessRequest pr = new ProcessRequest(cmd, dir, null, req.timeout(), Map.of());
 
         Thread worker = Thread.currentThread();
-        token.onCancel(worker::interrupt);
+        java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean(true);
+        token.onCancel(() -> { if (running.get()) worker.interrupt(); });
         ProcessResult res;
         try {
             res = processes.run(pr);
@@ -58,6 +59,8 @@ abstract class CliAiRunner implements AiRunner {
             throw new CancellationException("cancelado");
         } catch (IOException e) {
             throw new AiException("Não foi possível executar " + cmd.getFirst() + ": " + e.getMessage(), e);
+        } finally {
+            running.set(false);
         }
         token.throwIfCancelled();
         if (res.timedOut())

@@ -163,6 +163,79 @@ class AiServiceTest {
         assertTrue(svc.supported(AiRunnerKind.CLAUDE));
     }
 
+    @Test
+    void requestValidationRejectsInvalidArguments() {
+        assertThrows(NullPointerException.class, () -> new AiRequest(null, "m", AiTask.OUTRO, "oi", List.of(), null));
+        assertThrows(NullPointerException.class, () -> new AiRequest(AiRunnerKind.CLAUDE, "m", null, "oi", List.of(), null));
+        assertThrows(IllegalArgumentException.class, () -> AiRequest.of(AiRunnerKind.CLAUDE, "m", AiTask.OUTRO, null));
+        assertThrows(IllegalArgumentException.class, () -> AiRequest.of(AiRunnerKind.CLAUDE, "m", AiTask.OUTRO, "   "));
+        assertThrows(IllegalArgumentException.class,
+                () -> AiRequest.of(AiRunnerKind.CLAUDE, "m", AiTask.OUTRO, "oi").withTimeout(Duration.ZERO));
+        assertThrows(IllegalArgumentException.class,
+                () -> AiRequest.of(AiRunnerKind.CLAUDE, "m", AiTask.OUTRO, "oi").withTimeout(Duration.ofSeconds(-1)));
+    }
+
+    @Test
+    void cacheKeyDifferentiatesTasksAndNullableModels() throws Exception {
+        AiRequest withModel = AiRequest.of(AiRunnerKind.CLAUDE, "haiku", AiTask.OUTRO, "oi");
+        AiRequest withoutModel = AiRequest.of(AiRunnerKind.CLAUDE, null, AiTask.OUTRO, "oi");
+        AiRequest blankModel = AiRequest.of(AiRunnerKind.CLAUDE, "   ", AiTask.OUTRO, "oi");
+        assertNotEquals(CacheKeys.of(withModel), CacheKeys.of(withoutModel));
+        assertEquals(CacheKeys.of(withoutModel), CacheKeys.of(blankModel));
+
+        AiRequest aula = AiRequest.of(AiRunnerKind.CLAUDE, "haiku", AiTask.AULA, "oi");
+        AiRequest dica = AiRequest.of(AiRunnerKind.CLAUDE, "haiku", AiTask.DICA, "oi");
+        assertNotEquals(CacheKeys.of(aula), CacheKeys.of(dica));
+    }
+
+    @Test
+    void missingAttachmentThrowsIOException() {
+        Path missing = dir.resolve("nao_existe.txt");
+        AiRequest req = req("resuma").withAttachments(List.of(missing));
+        assertThrows(java.io.IOException.class, () -> CacheKeys.of(req));
+        assertThrows(java.io.IOException.class, () -> run(req, false, BudgetGate.ALWAYS));
+    }
+
+    @Test
+    void aiUsageAggregatesEmptyListAndCalculatesRates() {
+        AiUsage empty = AiUsage.of(List.of(), ZoneId.of("UTC"));
+        assertEquals(0, empty.cacheHits());
+        assertEquals(0, empty.realCalls());
+        assertEquals(0.0, empty.cacheHitRate());
+        assertTrue(empty.byDay().isEmpty());
+        assertTrue(empty.byTask().isEmpty());
+        assertTrue(empty.byModel().isEmpty());
+
+        Instant now = Instant.parse("2026-11-07T12:00:00Z");
+        AiCall call1 = new AiCall(1, "k1", AiRunnerKind.CLAUDE, "haiku", AiTask.AULA, "p1", "r1",
+                AiCallStatus.OK, 100L, 50L, 0.002, 1000, now, false);
+        AiCall call2 = new AiCall(2, "k2", AiRunnerKind.CLAUDE, "sonnet", AiTask.AULA, "p2", "r2",
+                AiCallStatus.OK, 200L, 100L, 0.005, 1500, now, false);
+        AiCall hit = new AiCall(3, "k1", AiRunnerKind.CLAUDE, "haiku", AiTask.AULA, "p1", "r1",
+                AiCallStatus.OK, null, null, null, 0, now, true);
+
+        AiUsage u = AiUsage.of(List.of(call1, call2, hit), ZoneId.of("UTC"));
+        assertEquals(1, u.cacheHits());
+        assertEquals(2, u.realCalls());
+        assertEquals(1.0 / 3.0, u.cacheHitRate(), 1e-9);
+
+        var rowAula = u.byTask().get("AULA");
+        assertEquals(2, rowAula.calls());
+        assertEquals(1, rowAula.cacheHits());
+        assertEquals(300, rowAula.inputTokens());
+        assertEquals(150, rowAula.outputTokens());
+        assertEquals(0.007, rowAula.costUsd(), 1e-9);
+    }
+
+    @Test
+    void aiUsageHandlesNullCostCallsWithoutNpe() {
+        Instant now = Instant.parse("2026-11-07T12:00:00Z");
+        AiCall callWithNullCost = new AiCall(1, "k1", AiRunnerKind.AGY, null, AiTask.DICA, "p", "r",
+                AiCallStatus.OK, 100L, 50L, null, 1000, now, false);
+        AiUsage u = AiUsage.of(List.of(callWithNullCost), ZoneId.of("UTC"));
+        assertNull(u.byTask().get("DICA").costUsd());
+    }
+
     static void waitUntil(java.util.function.BooleanSupplier c) throws InterruptedException {
         long end = System.currentTimeMillis() + 5000;
         while (!c.getAsBoolean()) {

@@ -60,4 +60,44 @@ class TaskQueueTest {
             assertEquals(TaskState.CANCELADA, q.snapshot().getFirst().state());
         }
     }
+
+    @Test
+    void trimsHistoryKeepingOnlyLastFiftyFinishedTasks() throws Exception {
+        try (TaskQueue q = new TaskQueue(Clock.systemUTC())) {
+            for (int i = 0; i < 60; i++) {
+                int val = i;
+                q.submit("t" + i, t -> val).result().get(5, TimeUnit.SECONDS);
+            }
+            var snap = q.snapshot();
+            assertEquals(50, snap.size());
+            assertEquals("t59", snap.getFirst().title());
+            assertEquals("t10", snap.getLast().title());
+        }
+    }
+
+    @Test
+    void cancellingFinishedTaskHandleDoesNotAlterCompletedState() throws Exception {
+        try (TaskQueue q = new TaskQueue(Clock.systemUTC())) {
+            var handle = q.submit("concluida", t -> "ok");
+            assertEquals("ok", handle.result().get(5, TimeUnit.SECONDS));
+            assertEquals(TaskState.CONCLUIDA, q.snapshot().getFirst().state());
+
+            handle.cancel();
+
+            assertEquals(TaskState.CONCLUIDA, q.snapshot().getFirst().state());
+            assertFalse(handle.result().isCancelled());
+        }
+    }
+
+    @Test
+    void submitGeneralPoolRunsTaskAndMarksAiFalse() throws Exception {
+        try (TaskQueue q = new TaskQueue(Clock.systemUTC())) {
+            var handle = q.submit("geral", t -> 123);
+            assertEquals(123, handle.result().get(5, TimeUnit.SECONDS));
+            var info = q.snapshot().getFirst();
+            assertFalse(info.ai());
+            assertEquals("geral", info.title());
+            assertEquals(TaskState.CONCLUIDA, info.state());
+        }
+    }
 }
