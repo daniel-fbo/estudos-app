@@ -45,6 +45,7 @@ public final class Services implements AutoCloseable {
     private final br.estudos.app.lessons.LessonService lessonService;
     private final br.estudos.infra.library.LucenePageIndex pageIndex;
     private final br.estudos.app.library.LibraryService libraryService;
+    private final br.estudos.app.anki.CardService cardService;
 
     private Services(Path home, ConfigStore configStore, Config config, Database database,
                      ProcessRunner processRunner) throws IOException {
@@ -69,6 +70,9 @@ public final class Services implements AutoCloseable {
         this.libraryService = new br.estudos.app.library.LibraryService(
                 new br.estudos.infra.library.JdbcBookRepository(database),
                 new br.estudos.infra.library.PdfBoxReader(), pageIndex, aiService, () -> this.config, clock);
+        this.cardService = new br.estudos.app.anki.CardService(new br.estudos.infra.anki.JdbcCardRepository(database),
+                new br.estudos.infra.http.AnkiConnectClient(br.estudos.infra.http.AnkiConnectClient.DEFAULT_URL),
+                aiService, () -> this.config, clock);
     }
 
     public static Services create(Path home) throws IOException, SQLException {
@@ -97,6 +101,7 @@ public final class Services implements AutoCloseable {
     public AiService ai() { return aiService; }
     public br.estudos.app.lessons.LessonService lessons() { return lessonService; }
     public br.estudos.app.library.LibraryService library() { return libraryService; }
+    public br.estudos.app.anki.CardService cards() { return cardService; }
 
     public void saveConfig(Config newConfig) throws IOException {
         configStore.save(newConfig);
