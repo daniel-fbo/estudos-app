@@ -37,6 +37,7 @@ public class MainWindow {
         screens.put("Metas", () -> new GoalsView(services).root());
         screens.put("Código", () -> new CodeView(services).root());
         screens.put("Aulas", () -> new LessonsView(services).root());
+        screens.put("Biblioteca", () -> new br.estudos.ui.library.LibraryView(services).root());
         screens.put("Tarefas", () -> new TasksView(services).root());
         screens.put("Uso de IA", () -> new AiUsageView(services).root());
         screens.put("Configurações", () -> new SettingsView(services).root());

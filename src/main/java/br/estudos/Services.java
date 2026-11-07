@@ -43,9 +43,11 @@ public final class Services implements AutoCloseable {
     private final StudyService studyService;
     private final JdbcCodeRepository codeRepository;
     private final br.estudos.app.lessons.LessonService lessonService;
+    private final br.estudos.infra.library.LucenePageIndex pageIndex;
+    private final br.estudos.app.library.LibraryService libraryService;
 
     private Services(Path home, ConfigStore configStore, Config config, Database database,
-                     ProcessRunner processRunner) {
+                     ProcessRunner processRunner) throws IOException {
         this.home = home;
         this.configStore = configStore;
         this.config = config;
@@ -63,6 +65,10 @@ public final class Services implements AutoCloseable {
                 new JdbcAiCallRepository(database), taskQueue, clock, () -> this.config.dailyAiBudget());
         this.lessonService = new br.estudos.app.lessons.LessonService(aiService,
                 new br.estudos.infra.lessons.JdbcLessonRepository(database), () -> this.config, clock);
+        this.pageIndex = new br.estudos.infra.library.LucenePageIndex(home.resolve("lucene"));
+        this.libraryService = new br.estudos.app.library.LibraryService(
+                new br.estudos.infra.library.JdbcBookRepository(database),
+                new br.estudos.infra.library.PdfBoxReader(), pageIndex, aiService, () -> this.config, clock);
     }
 
     public static Services create(Path home) throws IOException, SQLException {
@@ -90,6 +96,7 @@ public final class Services implements AutoCloseable {
     public TaskQueue tasks() { return taskQueue; }
     public AiService ai() { return aiService; }
     public br.estudos.app.lessons.LessonService lessons() { return lessonService; }
+    public br.estudos.app.library.LibraryService library() { return libraryService; }
 
     public void saveConfig(Config newConfig) throws IOException {
         configStore.save(newConfig);
@@ -99,5 +106,10 @@ public final class Services implements AutoCloseable {
     @Override
     public void close() {
         taskQueue.close();
+        try {
+            pageIndex.close();
+        } catch (IOException e) {
+            log.warn("Falha ao fechar o índice Lucene", e);
+        }
     }
 }

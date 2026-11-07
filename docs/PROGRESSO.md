@@ -86,3 +86,16 @@ Formato:
 - importante: destino da aula usa `LessonFiles.freeDir` (sufixo `-2`, `-3`) em vez de sobrescrever aula anterior de mesmo slug.
 - importante: faltando PDF ou `.md`, a aula fica FALHOU com log dos arquivos encontrados (nada é movido).
 - itens "menor" ignorados.
+
+## M5 — Biblioteca — 2026-11-07 — concluído
+- feito: tela **Biblioteca** (cadastro/edição/exclusão de livros, filtros, importar pasta e indexar em segundo plano pela fila Tarefas, busca no texto com trecho em negrito e abrir PDF, atualizar página atual → status LENDO/LIDO automático, "Perguntar"). Índice Lucene em `~/.estudos-app/lucene/`, 1 documento por página.
+- pergunta: `askAgy` envia o caminho do PDF (anexo entra na chave de cache; resposta em cache); se o agy falha/indisponível a UI oferece `askClaude` com as 8 melhores páginas do Lucene.
+- interfaces públicas novas: `app.library.LibraryService` (`Services.library()`), `BookRepository` (impl. `JdbcBookRepository`), `PdfReader` (`PdfBoxReader`), `PageIndex` (`LucenePageIndex`); domínio `Book`, `BookKind`, `BookStatus`.
+- testes: `LibraryServiceTest` com 2 PDFs gerados via PDFBox (importar, buscar, reimportar, progresso, excluir, perguntas com runners falsos). Todos passam.
+- pendências: "alimenta metas" não implementado (a página atual só fica em `book.current_page`; metas não leem isso ainda); texto de PDFs escaneados não é extraído (sem OCR); `mvn javafx:run` não verificado (sem display).
+
+### M5 — correções da revisão
+- importante: `snippet` compara com `fold()` (minúsculas/sem acento que preserva o comprimento), sem `StringIndexOutOfBounds` em textos como `İ`.
+- importante: analyzer próprio (StandardTokenizer + LowerCase + `FoldFilter` sem acentos) no índice e na consulta; "minimos" acha "mínimos". Livros já indexados precisam ser reindexados.
+- importante: `textQuery` passa `AND`/`OR`/`NOT` soltos para minúsculas, então "Dijkstra AND" não zera a busca.
+- itens "menor" ignorados. Testes do revisor passaram sem ajuste.
