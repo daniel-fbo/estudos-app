@@ -46,6 +46,7 @@ public final class Services implements AutoCloseable {
     private final br.estudos.infra.library.LucenePageIndex pageIndex;
     private final br.estudos.app.library.LibraryService libraryService;
     private final br.estudos.app.anki.CardService cardService;
+    private final br.estudos.app.cf.CfService cfService;
 
     private Services(Path home, ConfigStore configStore, Config config, Database database,
                      ProcessRunner processRunner) throws IOException {
@@ -72,6 +73,10 @@ public final class Services implements AutoCloseable {
                 new br.estudos.infra.library.PdfBoxReader(), pageIndex, aiService, () -> this.config, clock);
         this.cardService = new br.estudos.app.anki.CardService(new br.estudos.infra.anki.JdbcCardRepository(database),
                 new br.estudos.infra.http.AnkiConnectClient(br.estudos.infra.http.AnkiConnectClient.DEFAULT_URL),
+                aiService, () -> this.config, clock);
+        this.cfService = new br.estudos.app.cf.CfService(new br.estudos.infra.cf.JdbcCfRepository(database),
+                new br.estudos.infra.http.CodeforcesHttpClient(br.estudos.infra.http.CodeforcesHttpClient.DEFAULT_URL,
+                        br.estudos.infra.http.CodeforcesHttpClient.MIN_INTERVAL_MS),
                 aiService, () -> this.config, clock);
     }
 
@@ -102,6 +107,7 @@ public final class Services implements AutoCloseable {
     public br.estudos.app.lessons.LessonService lessons() { return lessonService; }
     public br.estudos.app.library.LibraryService library() { return libraryService; }
     public br.estudos.app.anki.CardService cards() { return cardService; }
+    public br.estudos.app.cf.CfService cf() { return cfService; }
 
     public void saveConfig(Config newConfig) throws IOException {
         configStore.save(newConfig);
