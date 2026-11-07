@@ -1,6 +1,8 @@
 package br.estudos.ui;
 
 import br.estudos.Services;
+import br.estudos.ui.study.DashboardView;
+import br.estudos.ui.study.GoalsView;
 import br.estudos.ui.settings.SettingsView;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -27,6 +29,8 @@ public class MainWindow {
                 "Anki", "Codeforces", "Agenda", "Uso de IA"}) {
             screens.put(name, () -> comingSoon(name));
         }
+        screens.put("Painel", () -> new DashboardView(services).root());
+        screens.put("Metas", () -> new GoalsView(services).root());
         screens.put("Configurações", () -> new SettingsView(services).root());
 
         VBox sidebar = new VBox();
