@@ -127,3 +127,8 @@ Formato:
 - interfaces públicas novas: `app.calendar.CalendarService` (`Services.calendar()`), `BlockPlanner`, `CalendarRepository` (`JdbcCalendarRepository`), `app.ports.CalendarClient` (`infra.google.GoogleCalendarClient`: cliente oficial; `~/.estudos-app/google/credentials.json` + `tokens/`), domínio `CalendarBlock`. Deps novas no pom: google-api-services-calendar, google-api-client, google-oauth-client-jetty.
 - testes: `CalendarTest` (distribuição, dias distintos, passado, fim de horários, aprovar/marcar feito com cliente falso).
 - pendências: integração real com o Google NÃO testada (sem credenciais/display) — testar à mão: salvar credentials.json, Autorizar, propor, aprovar e conferir no Google Calendar; grade de horários livres não é salva; metas de CONTAGEM não entram no plano; `mvn javafx:run` não verificado.
+
+### M8 — correções da revisão
+- importante: `plan` desconta dos `Need` os minutos de blocos pendentes (não feitos, futuros) das semanas dos horários e remove esses intervalos dos horários livres; replanejar não duplica. Removido o `@Disabled` do teste do revisor.
+- importante: `approve` anexa os blocos já salvos à `CalendarException.saved`; a UI remove-os da lista proposta ao falhar e desabilita "Aprovar" enquanto o job roda.
+- importante: `GoogleCalendarClient` autoriza com timeout de 180 s (para o receiver) e as requisições têm connect 15 s / read 30 s. Itens "menor" ignorados; testes do revisor passaram sem ajuste.

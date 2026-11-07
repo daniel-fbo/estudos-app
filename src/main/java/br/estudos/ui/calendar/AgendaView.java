@@ -25,6 +25,7 @@ public class AgendaView {
     private final Services services;
     private final VBox root = new VBox(10);
     private final Label status = new Label();
+    private final Button approve = new Button();
     private final ToggleButton[][] cells = new ToggleButton[7][LAST_HOUR - FIRST_HOUR + 1];
     private final ListView<PlannedBlock> proposed = new ListView<>();
     private final ListView<CalendarBlock> scheduled = new ListView<>();
@@ -69,7 +70,7 @@ public class AgendaView {
 
         Button plan = new Button("Propor blocos");
         plan.setOnAction(e -> plan());
-        Button approve = new Button("Aprovar e criar eventos");
+        approve.setText("Aprovar e criar eventos");
         approve.setOnAction(e -> approve());
         Button done = new Button("Marcar como feito");
         done.setOnAction(e -> markDone());
@@ -130,11 +131,21 @@ public class AgendaView {
     private void approve() {
         List<PlannedBlock> p = new ArrayList<>(proposed.getItems());
         if (p.isEmpty()) { status.setText("Nenhum bloco proposto."); return; }
+        approve.setDisable(true);
         run("Criando eventos…", () -> {
-            var saved = services.calendar().approve(p);
-            Platform.runLater(() -> { proposed.getItems().clear(); load(); });
-            return saved.size() + " eventos criados no calendário Estudos.";
-        });
+            try {
+                var saved = services.calendar().approve(p);
+                Platform.runLater(() -> { proposed.getItems().clear(); load(); });
+                return saved.size() + " eventos criados no calendário Estudos.";
+            } catch (br.estudos.app.ports.CalendarClient.CalendarException ex) {
+                int n = ex.saved.size();
+                Platform.runLater(() -> {
+                    proposed.getItems().remove(0, Math.min(n, proposed.getItems().size()));
+                    load();
+                });
+                throw ex;
+            }
+        }, () -> approve.setDisable(false));
     }
 
     private void markDone() {
@@ -166,13 +177,15 @@ public class AgendaView {
 
     private interface Job { String call() throws Exception; }
 
-    private void run(String start, Job job) {
+    private void run(String start, Job job) { run(start, job, () -> { }); }
+
+    private void run(String start, Job job, Runnable after) {
         status.setText(start);
         services.background().submit(() -> {
             String msg;
             try { msg = job.call(); } catch (Throwable e) { msg = "Erro: " + e.getMessage(); }
             String m = msg;
-            Platform.runLater(() -> status.setText(m));
+            Platform.runLater(() -> { status.setText(m); after.run(); });
         });
     }
 }

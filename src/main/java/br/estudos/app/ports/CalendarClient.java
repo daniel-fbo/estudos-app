@@ -14,6 +14,8 @@ public interface CalendarClient {
     String createEvent(String title, String description, Instant start, Instant end) throws CalendarException;
 
     class CalendarException extends Exception {
+        /** Blocos já criados/gravados antes da falha (vazio se nenhum). */
+        public java.util.List<br.estudos.domain.CalendarBlock> saved = java.util.List.of();
         public CalendarException(String m) { super(m); }
         public CalendarException(String m, Throwable c) { super(m, c); }
     }

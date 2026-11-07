@@ -32,6 +32,8 @@ public class GoogleCalendarClient implements CalendarClient {
     public static final String CALENDAR_NAME = "Estudos";
     private static final GsonFactory JSON = GsonFactory.getDefaultInstance();
 
+    private static final long AUTH_TIMEOUT_SECONDS = 180;
+
     private final Path dir;
     private volatile Calendar service;
     private volatile String calendarId;
@@ -71,10 +73,29 @@ public class GoogleCalendarClient implements CalendarClient {
                     transport, JSON, secrets, List.of(CalendarScopes.CALENDAR))
                     .setDataStoreFactory(new FileDataStoreFactory(tokensDir().toFile()))
                     .setAccessType("offline").build();
-            Credential cred = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder().setPort(0).build())
-                    .authorize("user");
-            service = new Calendar.Builder(transport, JSON, cred).setApplicationName("Estudos App").build();
+            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(0).build();
+            var exec = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "google-auth"); t.setDaemon(true); return t;
+            });
+            Credential cred;
+            try {
+                cred = exec.submit(() -> new AuthorizationCodeInstalledApp(flow, receiver).authorize("user"))
+                        .get(AUTH_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (java.util.concurrent.TimeoutException te) {
+                try { receiver.stop(); } catch (IOException ignored) { }
+                throw new CalendarException("Tempo esgotado esperando a autorização no navegador.");
+            } finally {
+                exec.shutdownNow();
+            }
+            com.google.api.client.http.HttpRequestInitializer init = req -> {
+                cred.initialize(req);
+                req.setConnectTimeout(15_000);
+                req.setReadTimeout(30_000);
+            };
+            service = new Calendar.Builder(transport, JSON, init).setApplicationName("Estudos App").build();
             return service;
+        } catch (CalendarException e) {
+            throw e;
         } catch (Exception e) {
             throw new CalendarException("Falha na autorização do Google: " + e.getMessage(), e);
         }
