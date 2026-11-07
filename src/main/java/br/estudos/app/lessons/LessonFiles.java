@@ -68,8 +68,7 @@ final class LessonFiles {
         if (pdf != null) {
             String stem = stem(pdf);
             md = mds.stream().filter(m -> stem(m).equals(stem)).findFirst().orElse(null);
-        }
-        if (md == null) md = mds.stream().max(byTime).orElse(null);
+        } else if (mds.size() == 1) md = mds.get(0); // sem PDF: só aceita um único candidato
         return new Found(pdf, md);
     }
 
@@ -77,6 +76,13 @@ final class LessonFiles {
         String n = p.getFileName().toString();
         int i = n.lastIndexOf('.');
         return i < 0 ? n : n.substring(0, i);
+    }
+
+    /** Diretório livre: {@code base}, ou {@code base-2}, {@code base-3}... se já existir. */
+    static Path freeDir(Path base) {
+        Path d = base;
+        for (int i = 2; Files.exists(d); i++) d = base.resolveSibling(base.getFileName() + "-" + i);
+        return d;
     }
 
     static Path move(Path file, Path dir) throws IOException {

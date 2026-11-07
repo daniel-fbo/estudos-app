@@ -80,3 +80,9 @@ Formato:
 - interfaces públicas novas: `app.lessons.LessonService` (`generate`, `similar`, `list`, `command`; via `Services.lessons()`), `LessonRepository` (impl. `infra.lessons.JdbcLessonRepository`), domínio `Lesson`, `LessonStatus`. Migration `V3__lesson_log` (coluna `log`).
 - testes: `LessonServiceTest` com runner falso que grava PDF/.md (fluxo, falha, título parecido). 101 testes.
 - pendências: aulas "GERANDO" ficam assim se o app fechar no meio; duas gerações simultâneas podem trocar arquivos entre si (detecção por data); `mvn javafx:run` não verificado (sem display).
+
+### M4 — correções da revisão
+- importante: `LessonFiles.findNew` só aceita `.md` com o mesmo nome do PDF (sem PDF, só se houver um único `.md`); teste `naoMoveMdSemRelacaoComOPdf` reativado (era `@Disabled`, estava certo).
+- importante: destino da aula usa `LessonFiles.freeDir` (sufixo `-2`, `-3`) em vez de sobrescrever aula anterior de mesmo slug.
+- importante: faltando PDF ou `.md`, a aula fica FALHOU com log dos arquivos encontrados (nada é movido).
+- itens "menor" ignorados.

@@ -97,13 +97,17 @@ public class LessonService {
     private Lesson collect(Lesson lesson, Config cfg, Instant start) {
         Path root = AppPaths.expand(cfg.estudosRepo());
         Path aulas = root.resolve("aulas");
-        Path dest = aulas.resolve(lesson.area()).resolve(LessonFiles.slug(lesson.title()));
+        Path dest0 = aulas.resolve(lesson.area()).resolve(LessonFiles.slug(lesson.title()));
+        Path dest = LessonFiles.freeDir(dest0);
         try {
             // margem de 2 s: sistemas de arquivos podem truncar o mtime
             var found = LessonFiles.findNew(root, aulas, start.minusSeconds(2));
             if (found.pdf() == null && found.md() == null)
                 return lesson.withResult(LessonStatus.FALHOU, null, null,
                         "A IA terminou, mas nenhum PDF/.md novo apareceu em " + root);
+            if (found.pdf() == null || found.md() == null)
+                return lesson.withResult(LessonStatus.FALHOU, null, null,
+                        "A IA não gerou os dois arquivos (PDF e .md). Encontrado: pdf=" + found.pdf() + ", md=" + found.md());
             Path pdf = LessonFiles.move(found.pdf(), dest);
             Path md = LessonFiles.move(found.md(), dest);
             return lesson.withResult(LessonStatus.PRONTA, pdf == null ? null : pdf.toString(),
