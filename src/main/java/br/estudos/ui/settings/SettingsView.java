@@ -202,7 +202,14 @@ public class SettingsView {
                 return null;
             }
         };
-        task.setOnSucceeded(e -> backupStatus.setText("Backup importado. Reinicie o app para aplicar."));
+        task.setOnSucceeded(e -> {
+            backupStatus.setText("Backup importado. Fechando o app…");
+            Alert done = new Alert(Alert.AlertType.INFORMATION,
+                    "Backup importado. O app será fechado; abra-o de novo para usar os dados restaurados.",
+                    ButtonType.OK);
+            done.showAndWait();
+            javafx.application.Platform.exit();
+        });
         task.setOnFailed(e -> {
             log.error("Erro ao importar backup", task.getException());
             backupStatus.setText("Erro: " + task.getException().getMessage());

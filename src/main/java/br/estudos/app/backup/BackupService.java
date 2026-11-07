@@ -83,42 +83,55 @@ public class BackupService {
      * O app deve ser reiniciado após a importação.
      */
     public void importBackup(Path src) throws IOException {
+        Files.createDirectories(dbFile.getParent());
+        Files.createDirectories(configFile.getParent());
+        Path tmpDb = dbFile.resolveSibling(dbFile.getFileName() + ".import-tmp");
+        Path tmpCfg = configFile.resolveSibling(configFile.getFileName() + ".import-tmp");
         boolean foundDb = false;
-        try (InputStream is = Files.newInputStream(src);
-             ZipInputStream zis = new ZipInputStream(is)) {
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                switch (entry.getName()) {
-                    case DB_ENTRY -> {
-                        Files.createDirectories(dbFile.getParent());
-                        Path tmp = dbFile.resolveSibling(dbFile.getFileName() + ".import-tmp");
-                        try {
-                            Files.copy(zis, tmp, StandardCopyOption.REPLACE_EXISTING);
-                            Files.move(tmp, dbFile, StandardCopyOption.REPLACE_EXISTING);
-                        } finally {
-                            Files.deleteIfExists(tmp);
+        boolean foundCfg = false;
+        try {
+            try (InputStream is = Files.newInputStream(src);
+                 ZipInputStream zis = new ZipInputStream(is)) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    switch (entry.getName()) {
+                        case DB_ENTRY -> {
+                            Files.copy(zis, tmpDb, StandardCopyOption.REPLACE_EXISTING);
+                            foundDb = true;
                         }
-                        foundDb = true;
-                        log.info("Banco restaurado de backup");
-                    }
-                    case CONFIG_ENTRY -> {
-                        Files.createDirectories(configFile.getParent());
-                        Path tmp = configFile.resolveSibling(configFile.getFileName() + ".import-tmp");
-                        try {
-                            Files.copy(zis, tmp, StandardCopyOption.REPLACE_EXISTING);
-                            Files.move(tmp, configFile, StandardCopyOption.REPLACE_EXISTING);
-                        } finally {
-                            Files.deleteIfExists(tmp);
+                        case CONFIG_ENTRY -> {
+                            Files.copy(zis, tmpCfg, StandardCopyOption.REPLACE_EXISTING);
+                            foundCfg = true;
                         }
-                        log.info("Config restaurado de backup");
+                        default -> log.warn("Entrada desconhecida no backup: {}", entry.getName());
                     }
-                    default -> log.warn("Entrada desconhecida no backup: {}", entry.getName());
+                    zis.closeEntry();
                 }
-                zis.closeEntry();
             }
+            if (!foundDb) {
+                throw new IOException("Backup inválido: não contém " + DB_ENTRY);
+            }
+            validateDb(tmpDb);
+            Files.move(tmpDb, dbFile, StandardCopyOption.REPLACE_EXISTING);
+            if (foundCfg) {
+                Files.move(tmpCfg, configFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            log.info("Backup restaurado");
+        } finally {
+            Files.deleteIfExists(tmpDb);
+            Files.deleteIfExists(tmpCfg);
         }
-        if (!foundDb) {
-            throw new IOException("Backup inválido: não contém " + DB_ENTRY);
+    }
+
+    private static void validateDb(Path db) throws IOException {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db.toAbsolutePath());
+             Statement st = conn.createStatement();
+             java.sql.ResultSet rs = st.executeQuery("PRAGMA quick_check")) {
+            if (!rs.next() || !"ok".equalsIgnoreCase(rs.getString(1))) {
+                throw new IOException("Backup inválido: banco corrompido");
+            }
+        } catch (SQLException e) {
+            throw new IOException("Backup inválido: banco ilegível (" + e.getMessage() + ")", e);
         }
     }
 

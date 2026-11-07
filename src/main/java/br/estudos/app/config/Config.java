@@ -31,7 +31,7 @@ public record Config(
 
     public Config {
         models = models == null ? Map.of() : Map.copyOf(models);
-        theme = theme == null || theme.isBlank() ? THEME_DARK : theme;
+        theme = THEME_LIGHT.equals(theme) ? THEME_LIGHT : THEME_DARK;
     }
 
     public boolean isDark() {

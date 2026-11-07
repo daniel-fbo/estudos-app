@@ -139,3 +139,10 @@ Formato:
 - `--enable-native-access=ALL-UNNAMED` no javafx:run, surefire e jpackage (some o aviso do Lucene).
 - interfaces públicas novas: `app.backup.BackupService` (`export`, `importBackup`, `suggestedName`), `Config.theme/withTheme/isDark`, `App.applyTheme`, `Launcher`. 206 testes.
 - pendências: avisos inofensivos no app empacotado ("Unsupported JavaFX configuration": JavaFX no classpath; Vector API do Lucene); sem instalador .deb/.rpm; atalhos fixos (não configuráveis).
+
+### M9 — correções da revisão
+- bloqueante: `importBackup` extrai para temp e valida o banco (`PRAGMA quick_check`) antes de substituir; banco corrompido preserva o original.
+- importante: config só é substituído depois de validar o zip (zip sem `estudos.db` não altera nada).
+- importante: após importar, a UI avisa e fecha o app (`Platform.exit`) para evitar escrita no banco antigo.
+- importante: `Config.theme` normalizado para escuro/claro no construtor.
+- pendência (menor): `empacotar.sh` gera só app-image, sem instalador.
