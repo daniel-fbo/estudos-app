@@ -146,3 +146,12 @@ Formato:
 - importante: após importar, a UI avisa e fecha o app (`Platform.exit`) para evitar escrita no banco antigo.
 - importante: `Config.theme` normalizado para escuro/claro no construtor.
 - pendência (menor): `empacotar.sh` gera só app-image, sem instalador.
+
+## P1 — Metas: edição, período e fontes — 2026-11-07 — concluído
+- feito: editar título/alvo/fonte na tela Metas (`StudyService.editGoal`, mesmas validações da criação); `start()` grava a sessão com `ended_at` nulo, e ao abrir o Painel pergunta Retomar / Encerrar agora / Descartar (abertas não entram nas estatísticas).
+- contador manual: `goal_count_log` (migration `V5__goal_logs`); progresso soma só os deltas do período atual (semana na segunda); `−` nunca leva o período abaixo de 0. `goal.manual_count` não é mais usado (coluna mantida, ignorada).
+- fonte automática: enum `domain.GoalSource` (0 nenhuma, 1 runner, 2 Codeforces, 3 páginas) em `goal.auto_count_ac`; uma por meta; runner/CF só CONTAGEM em CP, páginas em qualquer área. `Goal` agora tem `source` no lugar de `manualCount`/`countAc`.
+- páginas lidas: `LibraryService.updateProgress` grava avanço positivo em `reading_log` (`BookRepository.logReading`); retrocesso ignorado.
+- interfaces novas: `Dated`, `StudyStats.sumInPeriod`, `StudyService.openSession/resumeOpen/endOpen/discardOpen`, `StudyRepository.{updateSession,deleteSession,openSession,logCountDelta,countDeltas,cfFirstAcTimes,pagesRead}`.
+- testes: `GoalsP1Test` + ajustes em `StudyStatsTest`, `DatabaseTest`, `JdbcCodeRepositoryTest`. Suíte verde.
+- pendências: diálogo de sessão aberta só aparece ao abrir o Painel; várias sessões abertas antigas só são tratadas uma por vez; UI não verificada com `mvn javafx:run` (sem display).

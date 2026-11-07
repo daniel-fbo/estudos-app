@@ -70,6 +70,28 @@ public class DashboardView {
         root.getChildren().addAll(title, timer, dashBox);
         sync();
         refresh();
+        Platform.runLater(this::offerOpenSession);
+    }
+
+    /** Sessão que ficou aberta (app fechado no meio): retomar, encerrar agora ou descartar. */
+    private void offerOpenSession() {
+        if (root.getScene() == null) return;
+        study.openSession().ifPresent(open -> {
+            ButtonType resume = new ButtonType("Retomar");
+            ButtonType end = new ButtonType("Encerrar agora");
+            ButtonType drop = new ButtonType("Descartar");
+            Alert a = new Alert(Alert.AlertType.CONFIRMATION, "Há uma sessão de " + open.area()
+                    + (open.subject() == null ? "" : " (" + open.subject() + ")") + " iniciada em "
+                    + java.time.LocalDateTime.ofInstant(open.startedAt(), java.time.ZoneId.systemDefault())
+                    .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm")) + " que não foi encerrada.",
+                    resume, end, drop);
+            a.setHeaderText("Sessão em andamento");
+            var r = a.showAndWait();
+            if (r.isEmpty()) return;
+            if (r.get() == resume) { study.resumeOpen(open); sync(); }
+            else if (r.get() == end) runBg(() -> study.endOpen(open, null), this::refresh);
+            else runBg(() -> study.discardOpen(open), this::refresh);
+        });
     }
 
     public Node root() { return new ScrollPane(root) {{ setFitToWidth(true); }}; }

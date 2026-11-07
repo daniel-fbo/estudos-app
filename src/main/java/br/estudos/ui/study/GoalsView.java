@@ -42,16 +42,12 @@ public class GoalsView {
         period.getSelectionModel().selectFirst();
         TextField target = new TextField();
         target.setPromptText("Alvo (horas ou quantidade)");
-        CheckBox countAc = new CheckBox("Contar ACs do runner");
-        countAc.setTooltip(new Tooltip("Cada arquivo com AC na tela Código soma 1 no período (só CONTAGEM em CP)"));
-        Runnable syncCountAc = () -> {
-            boolean allowed = area.getValue() == Area.CP && kind.getValue() == GoalKind.CONTAGEM;
-            countAc.setDisable(!allowed);
-            if (!allowed) countAc.setSelected(false);
-        };
-        area.setOnAction(e -> syncCountAc.run());
-        kind.setOnAction(e -> syncCountAc.run());
-        syncCountAc.run();
+        ComboBox<GoalSource> source = new ComboBox<>();
+        source.setTooltip(new Tooltip("Fonte automática somada ao contador manual (só metas de CONTAGEM)"));
+        Runnable syncSource = () -> fillSources(source, area.getValue(), kind.getValue());
+        area.setOnAction(e -> syncSource.run());
+        kind.setOnAction(e -> syncSource.run());
+        syncSource.run();
         Button add = new Button("Criar meta");
         add.setOnAction(e -> {
             try {
@@ -60,14 +56,14 @@ public class GoalsView {
                 Area a = area.getValue();
                 GoalKind k = kind.getValue();
                 GoalPeriod p = period.getValue();
-                boolean ac = countAc.isSelected();
-                mutate(() -> study.createGoal(n, a, k, p, t, ac), () -> { name.clear(); target.clear(); });
+                GoalSource src = source.getValue();
+                mutate(() -> study.createGoal(n, a, k, p, t, src), () -> { name.clear(); target.clear(); });
             } catch (NumberFormatException ex) {
                 error.setText("Alvo inválido.");
             }
         });
         error.setStyle("-fx-text-fill: #c0392b;");
-        HBox form = new HBox(8, name, area, kind, period, target, countAc, add);
+        HBox form = new HBox(8, name, area, kind, period, target, source, add);
         HBox.setHgrow(name, Priority.ALWAYS);
         root.getChildren().addAll(title, form, error, list);
         refresh();
@@ -113,15 +109,6 @@ public class GoalsView {
                 plus.setOnAction(e -> mutate(() -> study.adjustCount(g, 1), () -> {}));
                 actions.getChildren().addAll(minus, plus);
             }
-            if (g.kind() == GoalKind.CONTAGEM && g.area() == Area.CP) {
-                CheckBox ac = new CheckBox("Contar ACs");
-                ac.setSelected(g.countAc());
-                ac.setOnAction(e -> {
-                    boolean sel = ac.isSelected();
-                    mutate(() -> study.updateGoal(g.withCountAc(sel)), () -> {});
-                });
-                actions.getChildren().add(ac);
-            }
             CheckBox on = new CheckBox("Ativa");
             on.setSelected(g.active());
             on.setOnAction(e -> {
@@ -130,10 +117,43 @@ public class GoalsView {
             });
             Button del = new Button("Excluir");
             del.setOnAction(e -> mutate(() -> study.deleteGoal(g.id()), () -> {}));
-            actions.getChildren().addAll(on, del);
+            Button edit = new Button("Editar");
+            edit.setOnAction(e -> edit(g));
+            actions.getChildren().addAll(edit, on, del);
             row.getChildren().addAll(progressRow(p), actions);
             list.getChildren().add(row);
         }
+    }
+
+    private static void fillSources(ComboBox<GoalSource> box, Area area, GoalKind kind) {
+        GoalSource cur = box.getValue();
+        box.getItems().clear();
+        for (GoalSource s : GoalSource.values()) if (s.allowedFor(area, kind)) box.getItems().add(s);
+        box.setValue(cur != null && box.getItems().contains(cur) ? cur : GoalSource.NENHUMA);
+        box.setDisable(box.getItems().size() < 2);
+    }
+
+    private void edit(Goal g) {
+        Dialog<ButtonType> d = new Dialog<>();
+        d.setTitle("Editar meta");
+        TextField name = new TextField(g.title());
+        TextField target = new TextField(String.valueOf(g.target()));
+        ComboBox<GoalSource> source = new ComboBox<>();
+        fillSources(source, g.area(), g.kind());
+        source.setValue(g.effectiveSource());
+        VBox box = new VBox(8, new Label("Título"), name, new Label("Alvo"), target, new Label("Fonte automática"), source);
+        d.getDialogPane().setContent(box);
+        d.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        d.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+            try {
+                double t = Double.parseDouble(target.getText().replace(',', '.').trim());
+                String n = name.getText();
+                GoalSource src = source.getValue();
+                mutate(() -> study.editGoal(g, n, t, src), () -> {});
+            } catch (NumberFormatException ex) {
+                error.setText("Alvo inválido.");
+            }
+        });
     }
 
     /** Linha com título, barra e valor; reutilizada pelo Painel. */

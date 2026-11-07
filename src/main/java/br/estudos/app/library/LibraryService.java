@@ -69,6 +69,7 @@ public class LibraryService {
         else if (p > 0 && s != BookStatus.LENDO) s = BookStatus.LENDO;
         Book nb = b.withProgress(p, s);
         repo.update(nb);
+        if (p > b.currentPage()) repo.logReading(b.id(), p - b.currentPage(), clock.instant());
         return nb;
     }
 

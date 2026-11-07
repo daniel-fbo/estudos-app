@@ -5,26 +5,26 @@ import java.time.Instant;
 /**
  * Meta de estudo.
  *
- * @param countAc se a meta conta automaticamente os ACs do runner de código (coluna {@code auto_count_ac});
- *                só tem efeito em metas de CONTAGEM da área CP
+ * @param source fonte automática (coluna {@code auto_count_ac}); só tem efeito em metas de CONTAGEM
+ *               (ver {@link GoalSource#allowedFor})
  */
 public record Goal(long id, String title, Area area, GoalKind kind, GoalPeriod period, double target,
-                   int manualCount, boolean countAc, boolean active, Instant createdAt) {
-
-    public Goal withManualCount(int c) {
-        return new Goal(id, title, area, kind, period, target, c, countAc, active, createdAt);
-    }
+                   GoalSource source, boolean active, Instant createdAt) {
 
     public Goal withActive(boolean a) {
-        return new Goal(id, title, area, kind, period, target, manualCount, countAc, a, createdAt);
+        return new Goal(id, title, area, kind, period, target, source, a, createdAt);
     }
 
-    public Goal withCountAc(boolean c) {
-        return new Goal(id, title, area, kind, period, target, manualCount, c, active, createdAt);
+    public Goal withSource(GoalSource s) {
+        return new Goal(id, title, area, kind, period, target, s, active, createdAt);
     }
 
-    /** Se os ACs do runner entram no progresso desta meta. */
-    public boolean countsAc() {
-        return countAc && kind == GoalKind.CONTAGEM && area == Area.CP;
+    public Goal withTitleTarget(String t, double tg) {
+        return new Goal(id, t, area, kind, period, tg, source, active, createdAt);
+    }
+
+    /** Fonte efetiva: {@link GoalSource#NENHUMA} se a combinação área/tipo não a permite. */
+    public GoalSource effectiveSource() {
+        return source.allowedFor(area, kind) ? source : GoalSource.NENHUMA;
     }
 }

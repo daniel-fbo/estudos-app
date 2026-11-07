@@ -11,6 +11,8 @@ public interface BookRepository {
     Book insert(Book b);
     void update(Book b);
     void delete(long id);
+    /** Registra avanço (positivo) de páginas lidas em {@code reading_log}. */
+    void logReading(long bookId, int pages, java.time.Instant at);
     Optional<Book> find(long id);
     Optional<Book> findByPath(String pdfPath);
     /** Filtros nulos/vazios são ignorados; {@code q} busca em título, autores e tags. */
