@@ -111,3 +111,11 @@ Formato:
 
 ### M6 — correções da revisão
 - importante: `importFromRepo` pula (com aviso no log) arquivos `.md` não-UTF-8/ilegíveis em vez de abortar a importação inteira. Itens "menor" ignorados; testes do revisor passaram sem ajuste.
+
+## M7 — Codeforces e dicas — 2026-11-07 — concluído
+- feito: tela **Codeforces** (Sincronizar; gráfico de rating; AC por tag; tags com mais WA/TLE; "Treine estas 3 tags" = pior taxa de AC com ≥3 tentativas e ≥1 falha; aba **Dicas**). Botão "Dicas…" no Código abre o mesmo painel com o nome do arquivo como problema.
+- sync: `user.status` + `user.rating` do `codeforcesHandle` (config) → `cf_submission` (upsert por id) e `cf_rating` (migration `V4__cf_rating`, substituída a cada sync). CE/TESTING não contam como falha.
+- dicas: 3 níveis, modelo `barato`, tarefa DICA, prompt proíbe código; nível N só após N-1 (`HintLevels`); texto salvo em `hint` por problema (cache; não chama IA de novo).
+- interfaces públicas novas: `app.cf.CfService` (`Services.cf()`: `sync`, `overview`, `hint`, `maxHintLevel`), `CfStats` (puro), `HintLevels`, `CfRepository` (`infra.cf.JdbcCfRepository`), `app.ports.CodeforcesClient` (`infra.http.CodeforcesHttpClient`, 1 req/2 s).
+- testes: `CfTest` (agregação por tag, sync idempotente, níveis/cache de dicas, cliente HTTP com servidor falso e intervalo).
+- pendências: enunciado por URL só é repassado ao Claude (o app não baixa a página); `mvn javafx:run` não verificado (sem display); "auto_count_ac" não usa `cf_submission`.

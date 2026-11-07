@@ -48,7 +48,16 @@ public class CodeView {
         stress.setOnAction(e -> stressDialog());
         Button cancel = new Button("Cancelar stress");
         cancel.setOnAction(e -> stressCancel.set(true));
-        HBox bar = new HBox(8, open, save, run, stress, cancel, fileLabel);
+        Button hints = new Button("Dicas…");
+        hints.setOnAction(e -> {
+            Dialog<ButtonType> d = new Dialog<>();
+            d.setTitle("Dicas");
+            d.getDialogPane().setContent(new br.estudos.ui.cf.HintPanel(services,
+                    current == null ? "" : current.getFileName().toString().replaceFirst("\\.[^.]+$", "")).root());
+            d.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+            d.show();
+        });
+        HBox bar = new HBox(8, open, save, run, stress, cancel, hints, fileLabel);
         VBox top = new VBox(8, title, bar);
 
         editor.setStyle("-fx-font-family: monospace;");
