@@ -42,6 +42,7 @@ public final class Services implements AutoCloseable {
     private final AiService aiService;
     private final StudyService studyService;
     private final JdbcCodeRepository codeRepository;
+    private final br.estudos.app.lessons.LessonService lessonService;
 
     private Services(Path home, ConfigStore configStore, Config config, Database database,
                      ProcessRunner processRunner) {
@@ -60,6 +61,8 @@ public final class Services implements AutoCloseable {
                 new ClaudeCliRunner(processRunner, () -> this.config.claudePath(), repoDir),
                 new AgyCliRunner(processRunner, () -> this.config.agyPath(), repoDir)),
                 new JdbcAiCallRepository(database), taskQueue, clock, () -> this.config.dailyAiBudget());
+        this.lessonService = new br.estudos.app.lessons.LessonService(aiService,
+                new br.estudos.infra.lessons.JdbcLessonRepository(database), () -> this.config, clock);
     }
 
     public static Services create(Path home) throws IOException, SQLException {
@@ -86,6 +89,7 @@ public final class Services implements AutoCloseable {
     public ExecutorService background() { return taskQueue.generalExecutor(); }
     public TaskQueue tasks() { return taskQueue; }
     public AiService ai() { return aiService; }
+    public br.estudos.app.lessons.LessonService lessons() { return lessonService; }
 
     public void saveConfig(Config newConfig) throws IOException {
         configStore.save(newConfig);
