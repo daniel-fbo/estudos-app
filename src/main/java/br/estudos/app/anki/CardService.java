@@ -73,7 +73,14 @@ public class CardService {
         int found = 0, added = 0;
         for (Path p : files) {
             Area area = areaOf(root.relativize(p));
-            for (CardDraft d : CardMarkdownParser.parse(Files.readString(p))) {
+            String text;
+            try {
+                text = Files.readString(p);
+            } catch (IOException e) { // não-UTF-8 ou ilegível: pula só este arquivo
+                org.slf4j.LoggerFactory.getLogger(CardService.class).warn("Arquivo ignorado na importação: {} ({})", p, e.toString());
+                continue;
+            }
+            for (CardDraft d : CardMarkdownParser.parse(text)) {
                 found++;
                 if (add(d.front(), d.back(), area, CardOrigin.NOTA, root.relativize(p).toString()).isPresent()) added++;
             }

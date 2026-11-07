@@ -108,3 +108,6 @@ Formato:
 - interfaces públicas novas: `app.anki.CardService` (`Services.cards()`), `CardRepository` (`JdbcCardRepository`), `CardMarkdownParser`, `app.ports.AnkiClient` (`infra.http.AnkiConnectClient`), domínio `Card`, `CardOrigin`. 
 - testes: `CardServiceTest` (parser, hash, importação/dedup, geração com runner falso, sync com fake, cliente HTTP com servidor falso e sem servidor).
 - pendências: URL do AnkiConnect fixa em localhost:8765; editar card já sincronizado não atualiza a nota no Anki; `mvn javafx:run` não verificado (sem display).
+
+### M6 — correções da revisão
+- importante: `importFromRepo` pula (com aviso no log) arquivos `.md` não-UTF-8/ilegíveis em vez de abortar a importação inteira. Itens "menor" ignorados; testes do revisor passaram sem ajuste.
