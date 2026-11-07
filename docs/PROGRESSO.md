@@ -132,3 +132,17 @@ Formato:
 - importante: `plan` desconta dos `Need` os minutos de blocos pendentes (não feitos, futuros) das semanas dos horários e remove esses intervalos dos horários livres; replanejar não duplica. Removido o `@Disabled` do teste do revisor.
 - importante: `approve` anexa os blocos já salvos à `CalendarException.saved`; a UI remove-os da lista proposta ao falhar e desabilita "Aprovar" enquanto o job roda.
 - importante: `GoogleCalendarClient` autoriza com timeout de 180 s (para o receiver) e as requisições têm connect 15 s / read 30 s. Itens "menor" ignorados; testes do revisor passaram sem ajuste.
+
+## M9 — Polimento e pacote — 2026-11-07 — concluído
+- feito (Antigravity, terminado pelo Claude após o agy ficar sem cota): tema escuro/claro em `app.css` (`Config.theme`, troca ao salvar), atalhos Ctrl+1…0 para as telas (`MainWindow.selectScreen`), ícone `icon.png`; backup em Configurações (exportar/importar `.zip` com banco via `VACUUM INTO` + config; importar pede confirmação e exige reiniciar).
+- pacote: `scripts/empacotar.sh` → `mvn package` (jar + `target/libs`) → `jpackage --type app-image` (Arch sem rpmbuild/dpkg) em `target/jpackage/Estudos/bin/Estudos`. Entrada `br.estudos.Launcher` (não estende Application; senão o JavaFX no classpath falha). Testado: o app empacotado abre e usa `~/.estudos-app/estudos.db`.
+- `--enable-native-access=ALL-UNNAMED` no javafx:run, surefire e jpackage (some o aviso do Lucene).
+- interfaces públicas novas: `app.backup.BackupService` (`export`, `importBackup`, `suggestedName`), `Config.theme/withTheme/isDark`, `App.applyTheme`, `Launcher`. 206 testes.
+- pendências: avisos inofensivos no app empacotado ("Unsupported JavaFX configuration": JavaFX no classpath; Vector API do Lucene); sem instalador .deb/.rpm; atalhos fixos (não configuráveis).
+
+### M9 — correções da revisão
+- bloqueante: `importBackup` extrai para temp e valida o banco (`PRAGMA quick_check`) antes de substituir; banco corrompido preserva o original.
+- importante: config só é substituído depois de validar o zip (zip sem `estudos.db` não altera nada).
+- importante: após importar, a UI avisa e fecha o app (`Platform.exit`) para evitar escrita no banco antigo.
+- importante: `Config.theme` normalizado para escuro/claro no construtor.
+- pendência (menor): `empacotar.sh` gera só app-image, sem instalador.

@@ -62,7 +62,7 @@ class CardServiceTest {
         };
         AiService ai = new AiService(List.of(runner), new JdbcAiCallRepository(db), queue, Clock.systemUTC(), () -> 100);
         Config d = Config.defaults(tmp);
-        Config cfg = new Config(repoDir.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "", d.models(), 100);
+        Config cfg = new Config(repoDir.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "", d.models(), 100, null);
         svc = new CardService(new JdbcCardRepository(db), anki, ai, () -> cfg, Clock.systemUTC());
     }
 

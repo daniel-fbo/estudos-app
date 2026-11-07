@@ -9,6 +9,7 @@ import java.util.Map;
  *
  * @param models        alias de modelo por tipo de tarefa (chaves: aulas, padrao, barato)
  * @param dailyAiBudget máximo de chamadas de IA por dia
+ * @param theme         "escuro" ou "claro"
  */
 public record Config(
         String estudosRepo,
@@ -19,14 +20,27 @@ public record Config(
         String gppPath,
         String codeforcesHandle,
         Map<String, String> models,
-        int dailyAiBudget) {
+        int dailyAiBudget,
+        String theme) {
 
     public static final String MODEL_LESSONS = "aulas";
     public static final String MODEL_DEFAULT = "padrao";
     public static final String MODEL_CHEAP = "barato";
+    public static final String THEME_DARK = "escuro";
+    public static final String THEME_LIGHT = "claro";
 
     public Config {
         models = models == null ? Map.of() : Map.copyOf(models);
+        theme = THEME_LIGHT.equals(theme) ? THEME_LIGHT : THEME_DARK;
+    }
+
+    public boolean isDark() {
+        return THEME_DARK.equals(theme);
+    }
+
+    public Config withTheme(String theme) {
+        return new Config(estudosRepo, dbPath, claudePath, agyPath, gccPath, gppPath,
+                codeforcesHandle, models, dailyAiBudget, theme);
     }
 
     public static Config defaults(Path appHome) {
@@ -40,7 +54,8 @@ public record Config(
                 "claude", "agy", "gcc", "g++",
                 "",
                 models,
-                30);
+                30,
+                THEME_DARK);
     }
 
     /** Preenche campos ausentes (config antigo ou editado à mão) com os de {@code d}. */
@@ -53,7 +68,8 @@ public record Config(
                 or(gccPath, d.gccPath), or(gppPath, d.gppPath),
                 codeforcesHandle == null ? d.codeforcesHandle : codeforcesHandle,
                 m,
-                dailyAiBudget > 0 ? dailyAiBudget : d.dailyAiBudget);
+                dailyAiBudget > 0 ? dailyAiBudget : d.dailyAiBudget,
+                or(theme, d.theme));
     }
 
     public String model(String task) {

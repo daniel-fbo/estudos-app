@@ -1,14 +1,20 @@
 package br.estudos.ui.settings;
 
+import br.estudos.App;
 import br.estudos.Services;
+import br.estudos.app.backup.BackupService;
 import br.estudos.app.config.Config;
 import br.estudos.app.tools.ExecutableChecker.CheckResult;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
@@ -16,10 +22,12 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -43,6 +51,7 @@ public class SettingsView {
     private final TextField modelDefault = new TextField();
     private final TextField modelCheap = new TextField();
     private final Spinner<Integer> budget = new Spinner<>(0, 10_000, 30);
+    private final ComboBox<String> themeCombo = new ComboBox<>();
     private final Label status = new Label();
     private final VBox root;
 
@@ -66,13 +75,35 @@ public class SettingsView {
         budget.setEditable(true);
         addRow("Chamadas de IA por dia", budget, null);
 
+        // Tema
+        themeCombo.getItems().addAll(Config.THEME_DARK, Config.THEME_LIGHT);
+        themeCombo.setValue(services.config().theme());
+        addRow("Tema", themeCombo, new Label("(aplica ao salvar)"));
+
         Button save = new Button("Salvar");
         save.setDefaultButton(true);
         save.setOnAction(e -> save());
 
+        // Backup
+        Label backupTitle = new Label("Backup");
+        backupTitle.getStyleClass().add("section-title");
+
+        Button exportBtn = new Button("Exportar backup…");
+        Button importBtn = new Button("Importar backup…");
+        Label backupStatus = new Label();
+
+        exportBtn.setOnAction(e -> exportBackup(backupStatus));
+        importBtn.setOnAction(e -> importBackup(backupStatus));
+
         Label title = new Label("Configurações");
         title.getStyleClass().add("screen-title");
-        root = new VBox(16, title, grid, new HBox(10, save, status));
+
+        Label shortcutsLabel = new Label("Atalhos: Ctrl+1…0 troca de tela");
+        shortcutsLabel.getStyleClass().add("shortcut-hint");
+
+        root = new VBox(16, title, shortcutsLabel, grid, new HBox(10, save, status),
+                new Separator(),
+                backupTitle, new HBox(10, exportBtn, importBtn, backupStatus));
         root.setPadding(new Insets(24));
         fill(services.config());
     }
@@ -95,6 +126,7 @@ public class SettingsView {
         modelDefault.setText(c.models().getOrDefault(Config.MODEL_DEFAULT, ""));
         modelCheap.setText(c.models().getOrDefault(Config.MODEL_CHEAP, ""));
         budget.getValueFactory().setValue(c.dailyAiBudget());
+        themeCombo.setValue(c.theme());
     }
 
     private Config read() {
@@ -106,18 +138,89 @@ public class SettingsView {
                 estudosRepo.getText().strip(), dbPath.getText().strip(),
                 claudePath.getText().strip(), agyPath.getText().strip(),
                 gccPath.getText().strip(), gppPath.getText().strip(),
-                cfHandle.getText().strip(), models, budget.getValue());
+                cfHandle.getText().strip(), models, budget.getValue(),
+                themeCombo.getValue());
     }
 
     private void save() {
         try {
             budget.increment(0); // confirma o texto digitado no spinner
-            services.saveConfig(read());
+            Config newConfig = read();
+            services.saveConfig(newConfig);
             status.setText("Salvo.");
+            // Aplica tema ao vivo
+            if (root.getScene() != null) {
+                App.applyTheme(root.getScene(), newConfig);
+            }
         } catch (Exception ex) {
             log.error("Erro ao salvar config", ex);
             status.setText("Erro ao salvar: " + ex.getMessage());
         }
+    }
+
+    private void exportBackup(Label backupStatus) {
+        BackupService backup = createBackupService();
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Exportar backup");
+        fc.setInitialFileName(backup.suggestedName());
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Arquivo ZIP", "*.zip"));
+        File dest = fc.showSaveDialog(root.getScene().getWindow());
+        if (dest == null) return;
+
+        backupStatus.setText("Exportando…");
+        Task<Void> task = new Task<>() {
+            @Override protected Void call() throws Exception {
+                backup.export(dest.toPath());
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> backupStatus.setText("Backup exportado com sucesso."));
+        task.setOnFailed(e -> {
+            log.error("Erro ao exportar backup", task.getException());
+            backupStatus.setText("Erro: " + task.getException().getMessage());
+        });
+        services.background().submit(task);
+    }
+
+    private void importBackup(Label backupStatus) {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Importar backup");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Arquivo ZIP", "*.zip"));
+        File src = fc.showOpenDialog(root.getScene().getWindow());
+        if (src == null) return;
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "O banco e o config atuais serão substituídos pelos do backup. "
+                        + "Exporte um backup antes se quiser guardar os dados de agora. Continuar?",
+                ButtonType.OK, ButtonType.CANCEL);
+        confirm.setHeaderText("Importar backup");
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+
+        backupStatus.setText("Importando…");
+        Task<Void> task = new Task<>() {
+            @Override protected Void call() throws Exception {
+                createBackupService().importBackup(src.toPath());
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> {
+            backupStatus.setText("Backup importado. Fechando o app…");
+            Alert done = new Alert(Alert.AlertType.INFORMATION,
+                    "Backup importado. O app será fechado; abra-o de novo para usar os dados restaurados.",
+                    ButtonType.OK);
+            done.showAndWait();
+            javafx.application.Platform.exit();
+        });
+        task.setOnFailed(e -> {
+            log.error("Erro ao importar backup", task.getException());
+            backupStatus.setText("Erro: " + task.getException().getMessage());
+        });
+        services.background().submit(task);
+    }
+
+    private BackupService createBackupService() {
+        Path dbFile = services.database().file();
+        Path configFile = services.home().resolve("config.json");
+        return new BackupService(dbFile, configFile);
     }
 
     private void chooseDirectory() {
