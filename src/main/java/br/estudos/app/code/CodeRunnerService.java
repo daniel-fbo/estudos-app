@@ -91,7 +91,6 @@ public class CodeRunnerService {
                     detail.append("caso ").append(cr.testCase().id()).append(' ').append(cr.verdict())
                           .append(": ").append(cr.detail()).append('\n');
             if (!cases.isEmpty()) repo.saveRun(k, worst.name(), passed, cases.size(), detail.toString());
-            if (worst == Verdict.AC && !cases.isEmpty()) repo.creditAcToCpGoals();
             return new RunReport(worst, passed, cases.size(), results, c.output());
         } finally {
             cleanup(c.binary());

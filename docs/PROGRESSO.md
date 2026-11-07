@@ -50,3 +50,9 @@ Formato:
 - importante: `stress` lança IllegalArgumentException se `iterations <= 0`; a UI valida inteiro > 0.
 - importante: `runCase` executa o binário com `workDir = binary.getParent()` (temp isolado).
 - itens "menor" ignorados. Testes do revisor passaram sem ajuste.
+
+### M1/M2 — correção da contagem de AC — 2026-11-07
+- `auto_count_ac` volta a ser marca (SPEC): `Goal.countAc` (boolean); caixa "Contar ACs do runner" em Metas (só CONTAGEM + CP).
+- progresso = `manual_count` + arquivos cujo **primeiro** AC caiu no período da meta (`StudyRepository.firstAcTimes()` lê `code_run`). Repetir AC não soma; zera por semana/mês.
+- removido `CodeRepository.creditAcToCpGoals()`; runner só grava `code_run`. Novos: `StudyService.createGoal(..., countAc)`, `Goal.withActive/withCountAc/countsAc`. 66 testes.
+- pendência: `manual_count` ainda não zera por período.

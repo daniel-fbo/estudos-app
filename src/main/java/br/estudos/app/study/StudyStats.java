@@ -49,11 +49,29 @@ public final class StudyStats {
     }
 
     public static GoalProgress progress(Goal g, List<StudySession> sessions, LocalDate today, ZoneId zone) {
+        return progress(g, sessions, List.of(), today, zone);
+    }
+
+    /**
+     * @param firstAcs instante do primeiro AC de cada arquivo-fonte; em metas que contam ACs,
+     *                 cada arquivo resolvido dentro do período vale 1 (repetir o AC não soma de novo)
+     */
+    public static GoalProgress progress(Goal g, List<StudySession> sessions, List<Instant> firstAcs,
+                                        LocalDate today, ZoneId zone) {
         if (g.kind() == GoalKind.CONTAGEM) {
-            return new GoalProgress(g, g.manualCount() + g.autoCountAc(), g.target());
+            long acs = g.countsAc() ? countInPeriod(firstAcs, g.period(), today, zone) : 0;
+            return new GoalProgress(g, g.manualCount() + acs, g.target());
         }
         long secs = secondsByArea(sessions, periodStart(g.period(), today), periodEnd(g.period(), today), zone)
                 .getOrDefault(g.area(), 0L);
         return new GoalProgress(g, secs / 3600.0, g.target());
+    }
+
+    static long countInPeriod(List<Instant> instants, GoalPeriod p, LocalDate today, ZoneId zone) {
+        LocalDate from = periodStart(p, today), to = periodEnd(p, today);
+        return instants.stream()
+                .map(i -> i.atZone(zone).toLocalDate())
+                .filter(d -> !d.isBefore(from) && d.isBefore(to))
+                .count();
     }
 }

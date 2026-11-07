@@ -17,4 +17,7 @@ public interface StudyRepository {
     void deleteGoal(long id);
     List<Goal> goals(boolean onlyActive);
     void setManualCount(long goalId, int count);
+
+    /** Instante do primeiro AC de cada arquivo-fonte em {@code code_run}. */
+    List<Instant> firstAcTimes();
 }

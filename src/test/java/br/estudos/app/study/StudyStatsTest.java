@@ -19,7 +19,7 @@ class StudyStatsTest {
     }
 
     static Goal goal(GoalKind k, GoalPeriod p, double t, Area a, int manual) {
-        return new Goal(1, "g", a, k, p, t, manual, 0, true, Instant.EPOCH);
+        return new Goal(1, "g", a, k, p, t, manual, false, true, Instant.EPOCH);
     }
 
     @Test
@@ -143,15 +143,34 @@ class StudyStatsTest {
 
     @Test
     void goalProgressZeroTargetAndAutoCount() {
-        Goal zeroTarget = new Goal(1, "zero", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 0, 0, 0, true, Instant.EPOCH);
+        Goal zeroTarget = new Goal(1, "zero", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 0, 0, false, true, Instant.EPOCH);
         GoalProgress gpZero = new GoalProgress(zeroTarget, 0, 0);
         assertEquals(0.0, gpZero.fraction());
         assertTrue(gpZero.done());
 
-        Goal countWithAuto = new Goal(2, "ac", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 10, 4, 6, true, Instant.EPOCH);
-        GoalProgress gpAuto = StudyStats.progress(countWithAuto, List.of(), TODAY, Z);
+        Goal countWithAuto = new Goal(2, "ac", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 10, 4, true, true, Instant.EPOCH);
+        List<Instant> sixAcs = java.util.stream.IntStream.range(0, 6)
+                .mapToObj(i -> TODAY.atTime(i, 0).atZone(Z).toInstant()).toList();
+        GoalProgress gpAuto = StudyStats.progress(countWithAuto, List.of(), sixAcs, TODAY, Z);
         assertEquals(10.0, gpAuto.current());
         assertEquals(1.0, gpAuto.fraction());
         assertTrue(gpAuto.done());
+    }
+
+    @Test
+    void acsCountOnlyInsidePeriodAndOnlyForFlaggedCpCountGoals() {
+        List<Instant> acs = List.of(
+                TODAY.atTime(9, 0).atZone(Z).toInstant(),                 // esta semana
+                TODAY.minusDays(4).atTime(9, 0).atZone(Z).toInstant(),    // segunda desta semana
+                TODAY.minusDays(5).atTime(23, 0).atZone(Z).toInstant());  // domingo anterior
+        Goal flagged = new Goal(1, "cp", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL, 5, 1, true, true, Instant.EPOCH);
+        assertEquals(3.0, StudyStats.progress(flagged, List.of(), acs, TODAY, Z).current()); // 1 manual + 2 ACs
+        assertEquals(2.0, StudyStats.progress(flagged.withManualCount(0).withCountAc(true), List.of(), acs, TODAY, Z).current());
+
+        assertEquals(1.0, StudyStats.progress(flagged.withCountAc(false), List.of(), acs, TODAY, Z).current());
+        Goal math = new Goal(2, "m", Area.MATEMATICA, GoalKind.CONTAGEM, GoalPeriod.MENSAL, 5, 0, true, true, Instant.EPOCH);
+        assertEquals(0.0, StudyStats.progress(math, List.of(), acs, TODAY, Z).current());
+        Goal monthly = new Goal(3, "mes", Area.CP, GoalKind.CONTAGEM, GoalPeriod.MENSAL, 5, 0, true, true, Instant.EPOCH);
+        assertEquals(3.0, StudyStats.progress(monthly, List.of(), acs, TODAY, Z).current());
     }
 }
