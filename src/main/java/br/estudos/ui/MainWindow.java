@@ -1,7 +1,9 @@
 package br.estudos.ui;
 
 import br.estudos.Services;
+import br.estudos.ui.ai.AiUsageView;
 import br.estudos.ui.code.CodeView;
+import br.estudos.ui.tasks.TasksView;
 import br.estudos.ui.study.DashboardView;
 import br.estudos.ui.study.GoalsView;
 import br.estudos.ui.settings.SettingsView;
@@ -27,12 +29,14 @@ public class MainWindow {
     public MainWindow(Services services) {
         Map<String, Supplier<Node>> screens = new LinkedHashMap<>();
         for (String name : new String[]{"Painel", "Metas", "Código", "Aulas", "Biblioteca",
-                "Anki", "Codeforces", "Agenda", "Uso de IA"}) {
+                "Anki", "Codeforces", "Agenda", "Tarefas", "Uso de IA"}) {
             screens.put(name, () -> comingSoon(name));
         }
         screens.put("Painel", () -> new DashboardView(services).root());
         screens.put("Metas", () -> new GoalsView(services).root());
         screens.put("Código", () -> new CodeView(services).root());
+        screens.put("Tarefas", () -> new TasksView(services).root());
+        screens.put("Uso de IA", () -> new AiUsageView(services).root());
         screens.put("Configurações", () -> new SettingsView(services).root());
 
         VBox sidebar = new VBox();
