@@ -36,3 +36,10 @@ Formato:
 - importante: `createGoal` rejeita NaN/infinito; `createGoal`/`start` rejeitam enums nulos (IllegalArgumentException).
 - importante: `runBg` do Painel captura Throwable e mostra Alert; `start` também mostra erro.
 - itens "menor" ignorados (exceto `adjustCount` só para CONTAGEM, feito junto). Testes do revisor passaram sem ajuste.
+
+## M2 — Runner de código — 2026-11-06 — concluído
+- feito: tela Código (abrir/salvar `.c`/`.cpp`, editor monoespaçado, casos de teste em `code_test_case`, compilar+rodar todos, stress test com cancelar). Compila com g++/gcc + sanitizers (30 s); 2 s/caso; vereditos AC/WA(diff)/TLE/RE(stderr)/CE; comparação ignora espaço no fim de linha e linhas vazias finais. Cada execução grava em `code_run`. 35 testes (9 novos, compilam programas reais).
+- interfaces públicas novas: `app.code.CodeRunnerService` (via `Services.code()`: `compile`, `runAll`, `stress`, `cases/addCase/deleteCase`), `CodeRepository` (impl. `infra.code.JdbcCodeRepository`), `CodeResults`, `OutputComparator`, domínio `TestCase`.
+- stress: gerador recebe o nº da iteração em `argv[1]` (`.py` via `python3`, ou `.cpp`/`.c`); para na 1ª divergência e salva o caso (origin STRESS, esperado = saída da força bruta).
+- decisão: `auto_count_ac` é contador (M1); um AC (todos os casos passam, ≥1 caso) soma +1 em toda meta ativa CONTAGEM/CP, em vez do "= 1" da SPEC.
+- pendências: o mesmo AC repetido soma de novo; caminhos dos compiladores vêm de `Config.gccPath/gppPath`; sem teste de UI nem `mvn javafx:run` verificado (ambiente sem display).
