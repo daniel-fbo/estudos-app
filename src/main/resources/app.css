@@ -1,0 +1,17 @@
+.sidebar {
+    -fx-background-color: #2b2d31;
+    -fx-padding: 12 8 12 8;
+    -fx-spacing: 4;
+    -fx-pref-width: 180;
+}
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d8d9dc;
+    -fx-alignment: center-left;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 14px;
+    -fx-background-radius: 6;
+}
+.nav-button:hover { -fx-background-color: #3a3c42; }
+.nav-button:selected { -fx-background-color: #4a6fa5; -fx-text-fill: white; }
+.screen-title { -fx-font-size: 22px; -fx-font-weight: bold; }

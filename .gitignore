@@ -1,0 +1,6 @@
+target/
+.revisao/
+*.log
+.idea/
+.vscode/
+REVISAO.md
