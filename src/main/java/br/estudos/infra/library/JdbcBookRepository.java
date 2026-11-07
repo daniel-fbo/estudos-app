@@ -123,4 +123,15 @@ public class JdbcBookRepository implements BookRepository {
         ps.setString(10, b.notes());
         ps.setString(11, b.indexedAt() == null ? null : b.indexedAt().toString());
     }
+
+    @Override
+    public void logReading(long bookId, int pages, java.time.Instant at) {
+        try (java.sql.Connection c = db.connect(); java.sql.PreparedStatement ps = c.prepareStatement(
+                "INSERT INTO reading_log(book_id,pages,at) VALUES (?,?,?)")) {
+            ps.setLong(1, bookId);
+            ps.setInt(2, pages);
+            ps.setString(3, at.toString());
+            ps.executeUpdate();
+        } catch (java.sql.SQLException e) { throw new IllegalStateException(e); }
+    }
 }

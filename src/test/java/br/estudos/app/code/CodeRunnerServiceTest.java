@@ -32,7 +32,7 @@ class CodeRunnerServiceTest {
     StudyService cpAcGoal() {
         var study = new StudyService(new JdbcStudyRepository(db), java.time.Clock.systemDefaultZone());
         study.createGoal("CP", br.estudos.domain.Area.CP, br.estudos.domain.GoalKind.CONTAGEM,
-                br.estudos.domain.GoalPeriod.SEMANAL, 5, true);
+                br.estudos.domain.GoalPeriod.SEMANAL, 5, br.estudos.domain.GoalSource.RUNNER);
         return study;
     }
 

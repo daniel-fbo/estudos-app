@@ -4,6 +4,7 @@ import br.estudos.domain.Area;
 import br.estudos.domain.Goal;
 import br.estudos.domain.GoalKind;
 import br.estudos.domain.GoalPeriod;
+import br.estudos.domain.GoalSource;
 import br.estudos.domain.TestCase;
 import br.estudos.infra.db.Database;
 import br.estudos.infra.study.JdbcStudyRepository;
@@ -86,12 +87,12 @@ class JdbcCodeRepositoryTest {
     }
 
     @Test
-    void countAcFlagRoundTrips() {
+    void goalSourceRoundTrips() {
         var studyRepo = new JdbcStudyRepository(db);
         Goal g = studyRepo.saveGoal(new Goal(0, "cp", Area.CP, GoalKind.CONTAGEM, GoalPeriod.SEMANAL,
-                5, 0, true, true, Instant.now()));
-        assertTrue(studyRepo.goals(false).get(0).countAc());
-        studyRepo.saveGoal(g.withCountAc(false));
-        assertFalse(studyRepo.goals(false).get(0).countAc());
+                5, GoalSource.CODEFORCES, true, Instant.now()));
+        assertEquals(GoalSource.CODEFORCES, studyRepo.goals(false).get(0).source());
+        studyRepo.saveGoal(g.withSource(GoalSource.NENHUMA));
+        assertEquals(GoalSource.NENHUMA, studyRepo.goals(false).get(0).source());
     }
 }

@@ -1,5 +1,6 @@
 package br.estudos.infra.study;
 
+import br.estudos.app.study.Dated;
 import br.estudos.app.study.StudyRepository;
 import br.estudos.domain.*;
 import br.estudos.infra.db.Database;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 
 public class JdbcStudyRepository implements StudyRepository {
@@ -83,21 +85,21 @@ public class JdbcStudyRepository implements StudyRepository {
         try (Connection c = db.connect()) {
             if (g.id() == 0) {
                 try (PreparedStatement ps = c.prepareStatement(
-                        "INSERT INTO goal(title,area,kind,period,target,manual_count,auto_count_ac,active,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                        "INSERT INTO goal(title,area,kind,period,target,auto_count_ac,active,created_at) VALUES (?,?,?,?,?,?,?,?)",
                         Statement.RETURN_GENERATED_KEYS)) {
                     bind(ps, g);
                     ps.executeUpdate();
                     try (ResultSet k = ps.getGeneratedKeys()) {
                         k.next();
                         return new Goal(k.getLong(1), g.title(), g.area(), g.kind(), g.period(), g.target(),
-                                g.manualCount(), g.countAc(), g.active(), g.createdAt());
+                                g.source(), g.active(), g.createdAt());
                     }
                 }
             }
             try (PreparedStatement ps = c.prepareStatement(
-                    "UPDATE goal SET title=?,area=?,kind=?,period=?,target=?,manual_count=?,auto_count_ac=?,active=?,created_at=? WHERE id=?")) {
+                    "UPDATE goal SET title=?,area=?,kind=?,period=?,target=?,auto_count_ac=?,active=?,created_at=? WHERE id=?")) {
                 bind(ps, g);
-                ps.setLong(10, g.id());
+                ps.setLong(9, g.id());
                 ps.executeUpdate();
                 return g;
             }
@@ -110,10 +112,9 @@ public class JdbcStudyRepository implements StudyRepository {
         ps.setString(3, g.kind().name());
         ps.setString(4, g.period().name());
         ps.setDouble(5, g.target());
-        ps.setInt(6, g.manualCount());
-        ps.setInt(7, g.countAc() ? 1 : 0);
-        ps.setInt(8, g.active() ? 1 : 0);
-        ps.setString(9, g.createdAt().toString());
+        ps.setInt(6, g.source().code());
+        ps.setInt(7, g.active() ? 1 : 0);
+        ps.setString(8, g.createdAt().toString());
     }
 
     @Override
@@ -138,7 +139,7 @@ public class JdbcStudyRepository implements StudyRepository {
             while (r.next()) {
                 out.add(new Goal(r.getLong("id"), r.getString("title"), Area.valueOf(r.getString("area")),
                         GoalKind.valueOf(r.getString("kind")), GoalPeriod.valueOf(r.getString("period")),
-                        r.getDouble("target"), r.getInt("manual_count"), r.getInt("auto_count_ac") != 0,
+                        r.getDouble("target"), GoalSource.of(r.getInt("auto_count_ac")),
                         r.getInt("active") == 1, Instant.parse(r.getString("created_at"))));
             }
             return out;
@@ -146,12 +147,75 @@ public class JdbcStudyRepository implements StudyRepository {
     }
 
     @Override
-    public void setManualCount(long goalId, int count) {
-        try (Connection c = db.connect(); PreparedStatement ps = c.prepareStatement("UPDATE goal SET manual_count=? WHERE id=?")) {
-            ps.setInt(1, count);
-            ps.setLong(2, goalId);
+    public void logCountDelta(long goalId, int delta, Instant at) {
+        try (Connection c = db.connect(); PreparedStatement ps = c.prepareStatement(
+                "INSERT INTO goal_count_log(goal_id,delta,at) VALUES (?,?,?)")) {
+            ps.setLong(1, goalId);
+            ps.setInt(2, delta);
+            ps.setString(3, at.toString());
             ps.executeUpdate();
         } catch (SQLException e) { throw wrap(e); }
+    }
+
+    @Override
+    public List<Dated> countDeltas(long goalId) {
+        return datedQuery("SELECT at, delta FROM goal_count_log WHERE goal_id=?", goalId);
+    }
+
+    @Override
+    public List<Dated> pagesRead(Area area) {
+        return datedQuery("SELECT l.at, l.pages FROM reading_log l JOIN book b ON b.id=l.book_id "
+                + "WHERE b.area=? AND l.pages > 0", area.name());
+    }
+
+    private List<Dated> datedQuery(String sql, Object arg) {
+        try (Connection c = db.connect(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setObject(1, arg);
+            List<Dated> out = new ArrayList<>();
+            try (ResultSet r = ps.executeQuery()) {
+                while (r.next()) out.add(new Dated(Instant.parse(r.getString(1)), r.getLong(2)));
+            }
+            return out;
+        } catch (SQLException e) { throw wrap(e); }
+    }
+
+    @Override
+    public List<Instant> cfFirstAcTimes() {
+        Map<String, Instant> first = new HashMap<>();
+        try (Connection c = db.connect(); Statement st = c.createStatement();
+             ResultSet r = st.executeQuery("SELECT contest_id, problem_index, submitted_at FROM cf_submission WHERE verdict='OK'")) {
+            while (r.next()) {
+                first.merge(r.getLong(1) + "/" + r.getString(2), Instant.parse(r.getString(3)),
+                        (a, b) -> a.isBefore(b) ? a : b);
+            }
+        } catch (SQLException e) { throw wrap(e); }
+        return new ArrayList<>(first.values());
+    }
+
+    @Override
+    public void updateSession(StudySession s) {
+        try (Connection c = db.connect(); PreparedStatement ps = c.prepareStatement(
+                "UPDATE study_session SET ended_at=?, duration_s=?, note=? WHERE id=?")) {
+            ps.setString(1, s.endedAt() == null ? null : s.endedAt().toString());
+            ps.setLong(2, s.durationSeconds());
+            ps.setString(3, s.note());
+            ps.setLong(4, s.id());
+            ps.executeUpdate();
+        } catch (SQLException e) { throw wrap(e); }
+    }
+
+    @Override
+    public void deleteSession(long id) {
+        try (Connection c = db.connect(); PreparedStatement ps = c.prepareStatement("DELETE FROM study_session WHERE id=?")) {
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        } catch (SQLException e) { throw wrap(e); }
+    }
+
+    @Override
+    public Optional<StudySession> openSession() {
+        List<StudySession> l = querySessions("SELECT * FROM study_session WHERE ended_at IS NULL ORDER BY started_at DESC, id DESC LIMIT 1");
+        return l.stream().findFirst();
     }
 
     @Override

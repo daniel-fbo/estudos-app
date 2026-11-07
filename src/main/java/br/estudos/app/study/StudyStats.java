@@ -49,29 +49,32 @@ public final class StudyStats {
     }
 
     public static GoalProgress progress(Goal g, List<StudySession> sessions, LocalDate today, ZoneId zone) {
-        return progress(g, sessions, List.of(), today, zone);
+        return progress(g, sessions, List.of(), List.of(), today, zone);
     }
 
     /**
-     * @param firstAcs instante do primeiro AC de cada arquivo-fonte; em metas que contam ACs,
-     *                 cada arquivo resolvido dentro do período vale 1 (repetir o AC não soma de novo)
+     * @param manual deltas do contador manual (CONTAGEM); só os do período atual somam
+     * @param auto   eventos da fonte automática da meta (já escolhida pelo chamador), cada um com seu valor
      */
-    public static GoalProgress progress(Goal g, List<StudySession> sessions, List<Instant> firstAcs,
+    public static GoalProgress progress(Goal g, List<StudySession> sessions, List<Dated> manual, List<Dated> auto,
                                         LocalDate today, ZoneId zone) {
         if (g.kind() == GoalKind.CONTAGEM) {
-            long acs = g.countsAc() ? countInPeriod(firstAcs, g.period(), today, zone) : 0;
-            return new GoalProgress(g, g.manualCount() + acs, g.target());
+            long m = Math.max(0, sumInPeriod(manual, g.period(), today, zone));
+            long a = g.effectiveSource() == GoalSource.NENHUMA ? 0 : sumInPeriod(auto, g.period(), today, zone);
+            return new GoalProgress(g, m + a, g.target());
         }
         long secs = secondsByArea(sessions, periodStart(g.period(), today), periodEnd(g.period(), today), zone)
                 .getOrDefault(g.area(), 0L);
         return new GoalProgress(g, secs / 3600.0, g.target());
     }
 
-    static long countInPeriod(List<Instant> instants, GoalPeriod p, LocalDate today, ZoneId zone) {
+    public static long sumInPeriod(List<Dated> items, GoalPeriod p, LocalDate today, ZoneId zone) {
         LocalDate from = periodStart(p, today), to = periodEnd(p, today);
-        return instants.stream()
-                .map(i -> i.atZone(zone).toLocalDate())
-                .filter(d -> !d.isBefore(from) && d.isBefore(to))
-                .count();
+        long sum = 0;
+        for (Dated d : items) {
+            LocalDate day = d.at().atZone(zone).toLocalDate();
+            if (!day.isBefore(from) && day.isBefore(to)) sum += d.value();
+        }
+        return sum;
     }
 }
