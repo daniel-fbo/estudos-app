@@ -20,3 +20,10 @@ Formato:
 - flags confirmadas: claude 2.1.319 → `-p`, `--dangerously-skip-permissions`, `--output-format json`, `--model` (aliases `fable|opus|sonnet|haiku` ou nome completo). agy 1.5.1 → `agy --dangerously-skip-permissions --print "<prompt>"` (`--model <id>` opcional; ids em `agy models`). Ambos testados com "responda só OK". `REVISOR="agy"`.
 - pendências: `TaskQueue` da ARQUITETURA ainda não existe (só `Services.background()`); M3 deve criá-la. Separador de SQL do Migrator não aceita `;`/`--` em strings nem triggers.
 - notas: pasta base pode ser trocada com `-Destudos.home=...` (vale também para o log). Mudança de `dbPath` só vale ao reiniciar.
+
+## M1 — Metas e progresso — 2026-11-06 — concluído
+- feito: cronômetro (iniciar/pausar/retomar/encerrar, com área, assunto, nota) gravando em `study_session`; CRUD de metas HORAS/CONTAGEM (semanal/mensal, ativar/desativar, +/−); Painel com gráfico de barras de horas/área na semana, barras de progresso das metas ativas, sequência e últimas 5 sessões; telas Painel e Metas ligadas. 26 testes.
+- interfaces públicas novas: `app.study.StudyService` (via `Services.study()`; relógio injetável), `StudyStats` (puro: `streak`, `periodStart/End`, `secondsByArea`, `progress`), `StudyRepository` (impl. `infra.study.JdbcStudyRepository`), domínio `StudySession`, `Goal`, `GoalKind`, `GoalPeriod`.
+- regras: semana começa na segunda; sequência não zera se só hoje ainda não teve estudo; progresso de CONTAGEM = `manual_count + auto_count_ac` (não zera a cada período); só sessões encerradas contam.
+- pendências: sem edição de título/alvo de meta existente (só criar/ativar/excluir); sessão em andamento se perde se o app fechar; sem fake de repositório (testes usam SQLite temporário).
+- notas: `auto_count_ac` fica para M5/M6 (Codeforces) preencher; `StudyService.dashboard()` roda fora da thread JavaFX.
