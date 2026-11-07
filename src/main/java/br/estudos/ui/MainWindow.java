@@ -40,6 +40,7 @@ public class MainWindow {
         screens.put("Biblioteca", () -> new br.estudos.ui.library.LibraryView(services).root());
         screens.put("Anki", () -> new br.estudos.ui.anki.AnkiView(services).root());
         screens.put("Codeforces", () -> new br.estudos.ui.cf.CodeforcesView(services).root());
+        screens.put("Agenda", () -> new br.estudos.ui.calendar.AgendaView(services).root());
         screens.put("Tarefas", () -> new TasksView(services).root());
         screens.put("Uso de IA", () -> new AiUsageView(services).root());
         screens.put("Configurações", () -> new SettingsView(services).root());

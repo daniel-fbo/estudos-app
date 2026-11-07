@@ -119,3 +119,16 @@ Formato:
 - interfaces públicas novas: `app.cf.CfService` (`Services.cf()`: `sync`, `overview`, `hint`, `maxHintLevel`), `CfStats` (puro), `HintLevels`, `CfRepository` (`infra.cf.JdbcCfRepository`), `app.ports.CodeforcesClient` (`infra.http.CodeforcesHttpClient`, 1 req/2 s).
 - testes: `CfTest` (agregação por tag, sync idempotente, níveis/cache de dicas, cliente HTTP com servidor falso e intervalo).
 - pendências: enunciado por URL só é repassado ao Claude (o app não baixa a página); `mvn javafx:run` não verificado (sem display); "auto_count_ac" não usa `cf_submission`.
+
+## M8 — Agenda — 2026-11-07 — concluído
+- feito: tela **Agenda** (instruções para criar credenciais OAuth, "Autorizar Google", grade semanal 6h–23h de horários livres, "Propor blocos", "Aprovar e criar eventos", lista de blocos da semana com "Marcar como feito"). Eventos vão para o calendário "Estudos" (criado se faltar).
+- planejador guloso sem IA (`BlockPlanner`): metas de HORAS ativas; falta = alvo − progresso (mensais ÷ semanas restantes); sempre a meta com mais minutos faltando → primeiro horário livre, preferindo dia sem bloco dessa meta; blocos de 30–90 min; ignora horários passados.
+- marcar como feito: `StudyService.logSession` cria a `study_session` (idempotente); usa a tabela `calendar_block` do V1 (sem migration nova).
+- interfaces públicas novas: `app.calendar.CalendarService` (`Services.calendar()`), `BlockPlanner`, `CalendarRepository` (`JdbcCalendarRepository`), `app.ports.CalendarClient` (`infra.google.GoogleCalendarClient`: cliente oficial; `~/.estudos-app/google/credentials.json` + `tokens/`), domínio `CalendarBlock`. Deps novas no pom: google-api-services-calendar, google-api-client, google-oauth-client-jetty.
+- testes: `CalendarTest` (distribuição, dias distintos, passado, fim de horários, aprovar/marcar feito com cliente falso).
+- pendências: integração real com o Google NÃO testada (sem credenciais/display) — testar à mão: salvar credentials.json, Autorizar, propor, aprovar e conferir no Google Calendar; grade de horários livres não é salva; metas de CONTAGEM não entram no plano; `mvn javafx:run` não verificado.
+
+### M8 — correções da revisão
+- importante: `plan` desconta dos `Need` os minutos de blocos pendentes (não feitos, futuros) das semanas dos horários e remove esses intervalos dos horários livres; replanejar não duplica. Removido o `@Disabled` do teste do revisor.
+- importante: `approve` anexa os blocos já salvos à `CalendarException.saved`; a UI remove-os da lista proposta ao falhar e desabilita "Aprovar" enquanto o job roda.
+- importante: `GoogleCalendarClient` autoriza com timeout de 180 s (para o receiver) e as requisições têm connect 15 s / read 30 s. Itens "menor" ignorados; testes do revisor passaram sem ajuste.

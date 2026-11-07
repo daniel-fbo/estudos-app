@@ -57,6 +57,14 @@ public class StudyService {
         return s;
     }
 
+    /** Registra uma sessão já encerrada (ex.: bloco da agenda marcado como feito). */
+    public StudySession logSession(Area area, String subject, Instant start, Instant end, String note) {
+        if (area == null || start == null || end == null || end.isBefore(start))
+            throw new IllegalArgumentException("Sessão inválida");
+        return repo.saveSession(new StudySession(0, area, blankToNull(subject), start, end,
+                Duration.between(start, end).getSeconds(), blankToNull(note)));
+    }
+
     public synchronized void discard() { runStart = null; pausedAt = null; pausedTotal = 0; }
 
     // ---- metas ----
