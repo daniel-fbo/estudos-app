@@ -91,3 +91,45 @@ Cada seção abaixo é um módulo. Um módulo = uma sessão de implementação.
 - Backup: exportar e importar o banco e o config num `.zip`.
 - Pacote nativo com `jpackage` (`mvn package` + script `scripts/empacotar.sh`).
 - **Aceite:** instalador gerado; o app instalado abre e usa o mesmo banco.
+
+---
+
+# Pendências (P1–P3)
+
+Correções das pendências registradas em `docs/PROGRESSO.md` depois do M9. Mesmo processo dos módulos: uma seção = uma sessão. O banco do usuário ainda não tem metas, livros nem cards, então mudanças de significado de colunas não precisam migrar dados.
+
+## P1 — Metas: edição, período e fontes automáticas
+
+- **Editar meta existente:** na tela Metas, editar título e alvo (validações iguais às da criação).
+- **Sessão em andamento não se perde:** ao iniciar o cronômetro, gravar a `study_session` com `ended_at` nulo. Ao abrir o app, se houver sessão aberta, perguntar se quer retomar (continua contando a partir de `started_at`, descontando pausas não é necessário) ou encerrar agora / descartar. Sessões abertas não contam nas estatísticas.
+- **Contador manual por período:** os +/− passam a gravar em uma tabela nova `goal_count_log(goal_id, delta, at)` (migration `V5__...`). O progresso de CONTAGEM soma só os deltas dentro do período atual da meta (semana começa na segunda), então zera a cada semana/mês. `goal.manual_count` deixa de ser usado para o progresso.
+- **Fonte automática da meta:** a coluna `goal.auto_count_ac` passa a ser um código de fonte (documentar no domínio como enum `GoalSource`): `0` nenhuma, `1` ACs do runner (arquivos com primeiro AC no período, como hoje), `2` ACs do Codeforces (problemas distintos `contest_id+problem_index` cuja primeira submissão `OK` caiu no período, de `cf_submission`), `3` páginas lidas. Fontes 1 e 2 só para CONTAGEM em CP; fonte 3 para CONTAGEM em qualquer área. Uma meta tem uma fonte só (sem somar runner + Codeforces, para não contar o mesmo problema duas vezes). A UI troca a caixa "Contar ACs" por uma escolha da fonte, na criação e na edição.
+- **Páginas lidas:** ao atualizar a página atual de um livro, gravar o avanço positivo em uma tabela nova `reading_log(book_id, pages, at)` (na mesma migration `V5`). A fonte 3 soma as páginas dos livros da mesma área da meta dentro do período. Voltar páginas não desconta.
+- **Aceite:** testes de: edição com validação; recuperação de sessão aberta; contador manual zerando na virada da semana/mês (relógio injetável); cada fonte contando só dentro do período e só para as metas certas; avanço de página gravado e retrocesso ignorado.
+
+## P2 — IA, aulas e Anki
+
+- **Orçamento por tokens:** novo campo do config `dailyTokenBudget` (0 = sem limite). O orçamento estoura se passar do limite de chamadas **ou** de tokens (entrada + saída de hoje); a confirmação diz qual dos dois. Campo editável em Configurações e exibido em Uso de IA.
+- **Timeout de IA configurável:** campo `aiTimeoutMinutes` no config (padrão 10; aulas continuam com o próprio timeout de 60 min, a menos que o config seja maior). Editável em Configurações.
+- **Prompt grande:** o `ClaudeCliRunner` envia o prompt pelo stdin (`claude -p` sem o prompt como argumento lê o stdin; confirmado em `claude --help`). O `agy --print` exige o prompt como argumento: se o prompt passar de 100 KB, o `AgyCliRunner` falha antes de executar com mensagem clara sugerindo o Claude.
+- **Aulas presas em GERANDO:** ao iniciar o app, aulas com status `GERANDO` viram `FALHOU` com log "app fechado durante a geração".
+- **Uma aula por vez:** a geração de aulas é serializada (fila própria de 1 thread ou trava no `LessonService`); enquanto uma gera, a próxima espera e a UI mostra "na fila". Assim a detecção de arquivos por data não mistura duas aulas.
+- **AnkiConnect configurável:** campo `ankiUrl` no config (padrão `http://localhost:8765`), editável em Configurações.
+- **Editar card sincronizado:** salvar um card com `anki_note_id` chama `updateNoteFields` no AnkiConnect (atualiza frente/verso da nota). Se o Anki estiver fechado, o card é salvo localmente e marcado como pendente de sincronização (`synced_at` nulo); a próxima sincronização atualiza a nota existente em vez de criar outra.
+- **Aceite:** testes de orçamento por tokens (os dois limites), stdin do Claude (runner com processo falso), limite do agy, recuperação de aulas `GERANDO`, serialização de duas gerações, e `updateNoteFields` com servidor HTTP falso (Anki aberto e fechado).
+
+## P3 — Agenda e pacote
+
+- **Grade de horários salva:** os horários livres marcados na grade semanal da Agenda são gravados (tabela nova via migration `V6__...` ou JSON em `~/.estudos-app/`) e recarregados ao abrir a tela.
+- **JavaFX no module-path no pacote:** `scripts/empacotar.sh` separa os jars do JavaFX (`javafx-*-linux.jar`) e os passa por `--module-path`/`--add-modules javafx.controls` (via `--java-options` com `$APPDIR`), para sumir o aviso "Unsupported JavaFX configuration". O resto continua no classpath.
+- **Atalho no menu:** script `scripts/instalar-atalho.sh` que cria `~/.local/share/applications/estudos.desktop` apontando para o app empacotado, com o ícone (substitui o instalador .deb/.rpm, que exige ferramentas ausentes no Arch).
+- **Aceite:** teste de salvar/carregar a grade; o app empacotado abre sem o aviso do JavaFX e usa o mesmo banco; o `.desktop` gerado passa em `desktop-file-validate` se a ferramenta existir.
+
+## Pendências que não serão feitas
+
+- OCR de PDFs escaneados (fora do escopo; exigiria Tesseract).
+- Baixar o enunciado do Codeforces pela URL (o site bloqueia acesso automatizado; a URL continua sendo repassada à IA).
+- Metas de CONTAGEM no planejador da Agenda (não têm duração).
+- Atalhos de teclado configuráveis e instalador .deb/.rpm.
+- Separador de SQL do Migrator: fica a convenção (sem `;`/`--` em strings nem triggers nas migrations).
+- Teste real do Google Calendar: depende das credenciais do usuário (passo a passo na tela Agenda).
