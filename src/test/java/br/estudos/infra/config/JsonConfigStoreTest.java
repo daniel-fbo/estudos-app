@@ -33,7 +33,7 @@ class JsonConfigStoreTest {
         Path file = dir.resolve("config.json");
         JsonConfigStore store = new JsonConfigStore(file, Config.defaults(dir));
         Config edited = new Config("/repo", "/db.sqlite", "/bin/claude", "agy", "gcc-14", "g++-14",
-                "tourist", Map.of("aulas", "fable", "padrao", "sonnet", "barato", "haiku"), 7);
+                "tourist", Map.of("aulas", "fable", "padrao", "sonnet", "barato", "haiku"), 7, "claro");
 
         store.save(edited);
         Config reloaded = new JsonConfigStore(file, Config.defaults(dir)).load();

@@ -1,17 +1,338 @@
+/* ========== TEMA ESCURO (padrão) ========== */
+.root {
+    -fx-base: #1e1e2e;
+    -fx-accent: #4a6fa5;
+    -fx-focus-color: #4a6fa5;
+    -fx-faint-focus-color: transparent;
+    -fx-background: #1e1e2e;
+    -fx-control-inner-background: #2b2d31;
+    -fx-text-fill: #e0e0e0;
+    -fx-mark-color: #e0e0e0;
+    -fx-font-family: "System";
+    -fx-font-size: 14px;
+    app-bg: #1e1e2e;
+    app-surface: #2b2d31;
+    app-surface-alt: #35373d;
+    app-border: #3a3c42;
+    app-text: #e0e0e0;
+    app-text-muted: #999;
+    app-accent: #4a6fa5;
+    app-accent-hover: #5a7fb5;
+    app-success: #4caf50;
+    app-warning: #ff9800;
+    app-error: #f44336;
+    sidebar-bg: #2b2d31;
+    sidebar-text: #d8d9dc;
+    sidebar-hover: #3a3c42;
+    sidebar-selected: #4a6fa5;
+}
+
+/* ========== TEMA CLARO ========== */
+.theme-claro .root, .root.theme-claro {
+    -fx-base: #f5f5f5;
+    -fx-background: #fafafa;
+    -fx-control-inner-background: #ffffff;
+    -fx-text-fill: #212121;
+    -fx-mark-color: #212121;
+    app-bg: #fafafa;
+    app-surface: #ffffff;
+    app-surface-alt: #f0f0f0;
+    app-border: #d0d0d0;
+    app-text: #212121;
+    app-text-muted: #666;
+    app-accent: #3b5998;
+    app-accent-hover: #4a6aa8;
+    app-success: #388e3c;
+    app-warning: #f57c00;
+    app-error: #d32f2f;
+    sidebar-bg: #e8e8e8;
+    sidebar-text: #333;
+    sidebar-hover: #d0d0d0;
+    sidebar-selected: #3b5998;
+}
+
+/* ========== SIDEBAR ========== */
 .sidebar {
-    -fx-background-color: #2b2d31;
+    -fx-background-color: sidebar-bg;
     -fx-padding: 12 8 12 8;
     -fx-spacing: 4;
     -fx-pref-width: 180;
 }
 .nav-button {
     -fx-background-color: transparent;
-    -fx-text-fill: #d8d9dc;
+    -fx-text-fill: sidebar-text;
     -fx-alignment: center-left;
     -fx-padding: 8 12 8 12;
     -fx-font-size: 14px;
     -fx-background-radius: 6;
 }
-.nav-button:hover { -fx-background-color: #3a3c42; }
-.nav-button:selected { -fx-background-color: #4a6fa5; -fx-text-fill: white; }
-.screen-title { -fx-font-size: 22px; -fx-font-weight: bold; }
+.nav-button:hover { -fx-background-color: sidebar-hover; }
+.nav-button:selected { -fx-background-color: sidebar-selected; -fx-text-fill: white; }
+
+/* ========== TÍTULOS E TEXTOS ========== */
+.screen-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: app-text;
+}
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: app-text;
+}
+.text-muted {
+    -fx-text-fill: app-text-muted;
+}
+
+/* ========== LABELS ========== */
+.label {
+    -fx-text-fill: app-text;
+}
+
+/* ========== BOTÕES ========== */
+.button {
+    -fx-background-color: app-surface-alt;
+    -fx-text-fill: app-text;
+    -fx-padding: 6 16 6 16;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: app-border;
+}
+.button:focused {
+    -fx-border-color: app-accent;
+    -fx-border-width: 1;
+}
+.button:default {
+    -fx-background-color: app-accent;
+    -fx-text-fill: white;
+}
+.button:default:hover {
+    -fx-background-color: app-accent-hover;
+}
+
+/* ========== CAMPOS DE TEXTO ========== */
+.text-field, .text-area, .spinner .text-field {
+    -fx-background-color: app-surface;
+    -fx-text-fill: app-text;
+    -fx-border-color: app-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 4 8 4 8;
+    -fx-prompt-text-fill: app-text-muted;
+}
+.text-field:focused, .text-area:focused {
+    -fx-border-color: app-accent;
+}
+
+/* ========== TABELAS ========== */
+.table-view {
+    -fx-background-color: app-surface;
+    -fx-border-color: app-border;
+}
+.table-view .column-header {
+    -fx-background-color: app-surface-alt;
+}
+.table-view .column-header .label {
+    -fx-text-fill: app-text;
+    -fx-font-weight: bold;
+}
+.table-view .table-row-cell {
+    -fx-background-color: app-surface;
+    -fx-text-fill: app-text;
+}
+.table-view .table-row-cell:odd {
+    -fx-background-color: app-surface-alt;
+}
+.table-view .table-row-cell:selected {
+    -fx-background-color: app-accent;
+    -fx-text-fill: white;
+}
+.table-view .table-cell {
+    -fx-text-fill: app-text;
+}
+.table-view .table-row-cell:selected .table-cell {
+    -fx-text-fill: white;
+}
+
+/* ========== SCROLL ========== */
+.scroll-pane {
+    -fx-background-color: app-bg;
+}
+.scroll-pane > .viewport {
+    -fx-background-color: app-bg;
+}
+.scroll-bar .thumb {
+    -fx-background-color: app-border;
+    -fx-background-radius: 4;
+}
+.scroll-bar .thumb:hover {
+    -fx-background-color: app-text-muted;
+}
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+}
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+/* ========== COMBOBOX / CHOICEBOX ========== */
+.combo-box, .choice-box {
+    -fx-background-color: app-surface;
+    -fx-border-color: app-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.combo-box .list-cell, .choice-box .label {
+    -fx-text-fill: app-text;
+}
+.combo-box-popup .list-view {
+    -fx-background-color: app-surface;
+}
+.combo-box-popup .list-cell {
+    -fx-text-fill: app-text;
+    -fx-background-color: app-surface;
+}
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: app-accent;
+    -fx-text-fill: white;
+}
+
+/* ========== SPINNER ========== */
+.spinner {
+    -fx-border-color: app-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+.spinner .increment-arrow-button,
+.spinner .decrement-arrow-button {
+    -fx-background-color: app-surface-alt;
+}
+
+/* ========== TABS ========== */
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: app-surface;
+}
+.tab-pane .tab {
+    -fx-background-color: app-surface-alt;
+}
+.tab-pane .tab:selected {
+    -fx-background-color: app-accent;
+}
+.tab-pane .tab .tab-label {
+    -fx-text-fill: app-text;
+}
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: white;
+}
+.tab-pane .tab-content-area {
+    -fx-background-color: app-bg;
+}
+
+/* ========== TOOLTIP ========== */
+.tooltip {
+    -fx-background-color: app-surface-alt;
+    -fx-text-fill: app-text;
+    -fx-border-color: app-border;
+    -fx-padding: 4 8 4 8;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+/* ========== DIALOG / ALERT ========== */
+.dialog-pane {
+    -fx-background-color: app-surface;
+}
+.dialog-pane .content {
+    -fx-text-fill: app-text;
+}
+.dialog-pane .header-panel {
+    -fx-background-color: app-surface-alt;
+}
+.dialog-pane .header-panel .label {
+    -fx-text-fill: app-text;
+}
+
+/* ========== PROGRESS BAR ========== */
+.progress-bar .bar {
+    -fx-background-color: app-accent;
+    -fx-background-radius: 4;
+}
+.progress-bar .track {
+    -fx-background-color: app-surface-alt;
+    -fx-background-radius: 4;
+}
+
+/* ========== CHARTS ========== */
+.chart-plot-background {
+    -fx-background-color: app-surface;
+}
+.chart-legend {
+    -fx-background-color: app-surface-alt;
+}
+.chart-legend .label {
+    -fx-text-fill: app-text;
+}
+.axis .axis-label {
+    -fx-text-fill: app-text;
+}
+.axis .tick-label {
+    -fx-text-fill: app-text-muted;
+}
+
+/* ========== CHECKBOX / RADIO ========== */
+.check-box {
+    -fx-text-fill: app-text;
+}
+.check-box .box {
+    -fx-background-color: app-surface;
+    -fx-border-color: app-border;
+    -fx-border-radius: 2;
+}
+.check-box:selected .box {
+    -fx-background-color: app-accent;
+    -fx-border-color: app-accent;
+}
+.radio-button {
+    -fx-text-fill: app-text;
+}
+.radio-button .radio {
+    -fx-background-color: app-surface;
+    -fx-border-color: app-border;
+}
+.radio-button:selected .radio {
+    -fx-border-color: app-accent;
+}
+.radio-button:selected .dot {
+    -fx-background-color: app-accent;
+}
+
+/* ========== SEPARATOR ========== */
+.separator .line {
+    -fx-border-color: app-border;
+}
+
+/* ========== ATALHOS / STATUS ========== */
+.shortcut-hint {
+    -fx-font-size: 11px;
+    -fx-text-fill: app-text-muted;
+    -fx-padding: 2 6 2 6;
+    -fx-background-color: app-surface-alt;
+    -fx-background-radius: 3;
+}
+
+/* ========== CÓDIGO (editor monoespaçado) ========== */
+.code-editor {
+    -fx-font-family: "Monospace";
+    -fx-font-size: 13px;
+}

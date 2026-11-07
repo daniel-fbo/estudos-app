@@ -18,7 +18,9 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -26,6 +28,7 @@ import java.util.function.Supplier;
 public class MainWindow {
 
     private final BorderPane root = new BorderPane();
+    private final List<ToggleButton> buttons = new ArrayList<>();
 
     public MainWindow(Services services) {
         Map<String, Supplier<Node>> screens = new LinkedHashMap<>();
@@ -59,11 +62,19 @@ public class MainWindow {
                 root.setCenter(e.getValue().get());
             });
             sidebar.getChildren().add(b);
+            buttons.add(b);
             if (first == null) first = b;
         }
         root.setLeft(sidebar);
         first.setSelected(true);
         root.setCenter(screens.get(first.getText()).get());
+    }
+
+    /** Seleciona a tela pelo índice (0 = Painel, 1 = Metas, …). */
+    public void selectScreen(int index) {
+        if (index >= 0 && index < buttons.size()) {
+            buttons.get(index).fire();
+        }
     }
 
     public Parent root() {
