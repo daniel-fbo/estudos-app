@@ -54,4 +54,18 @@ class JsonConfigStoreTest {
         assertEquals("haiku", c.model(Config.MODEL_CHEAP));
         assertEquals(30, c.dailyAiBudget());
     }
+
+    @Test
+    void savedJsonHasOnlyConfigFields() throws Exception {
+        Path file = dir.resolve("config.json");
+        new JsonConfigStore(file, Config.defaults(dir)).load();
+
+        var fields = new java.util.TreeSet<String>();
+        new com.fasterxml.jackson.databind.ObjectMapper().readTree(file.toFile()).fieldNames()
+                .forEachRemaining(fields::add);
+        var components = new java.util.TreeSet<String>();
+        for (var rc : Config.class.getRecordComponents()) components.add(rc.getName());
+
+        assertEquals(components, fields);
+    }
 }
