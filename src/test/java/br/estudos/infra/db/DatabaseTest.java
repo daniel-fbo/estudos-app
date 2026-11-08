@@ -22,10 +22,10 @@ class DatabaseTest {
     void createsAllTablesFromV1() throws Exception {
         Database db = new Database(dir.resolve("a/b/estudos.db"));
 
-        assertEquals(5, db.migrate());
+        assertEquals(6, db.migrate());
 
         Set<String> expected = Set.of("schema_version", "cf_rating", "study_session", "goal", "code_test_case",
-                "code_run", "goal_count_log", "reading_log", "ai_call", "lesson", "book", "card", "cf_submission", "hint", "calendar_block");
+                "code_run", "availability", "goal_count_log", "reading_log", "ai_call", "lesson", "book", "card", "cf_submission", "hint", "calendar_block");
         assertEquals(new TreeSet<>(expected), tables(db));
     }
 
@@ -52,6 +52,9 @@ class DatabaseTest {
             assertTrue(rs.next());
             assertEquals(5, rs.getInt(1));
             assertEquals("goal_logs", rs.getString(2));
+            assertTrue(rs.next());
+            assertEquals(6, rs.getInt(1));
+            assertEquals("availability", rs.getString(2));
             assertFalse(rs.next());
         }
     }

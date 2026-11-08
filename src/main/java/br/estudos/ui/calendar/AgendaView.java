@@ -29,6 +29,13 @@ public class AgendaView {
     private final ToggleButton[][] cells = new ToggleButton[7][LAST_HOUR - FIRST_HOUR + 1];
     private final ListView<PlannedBlock> proposed = new ListView<>();
     private final ListView<CalendarBlock> scheduled = new ListView<>();
+    /** Um único thread para a grade: salvamentos e carga rodam na ordem dos cliques. */
+    private final java.util.concurrent.ExecutorService gridExecutor = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "agenda-grade");
+        t.setDaemon(true);
+        return t;
+    });
+    private final GridPane grid = new GridPane();
     private LocalDate weekStart = LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
     public AgendaView(Services services) {
@@ -52,7 +59,7 @@ public class AgendaView {
         prev.setOnAction(e -> { weekStart = weekStart.minusWeeks(1); refresh(week); });
         next.setOnAction(e -> { weekStart = weekStart.plusWeeks(1); refresh(week); });
 
-        GridPane grid = new GridPane();
+        grid.setDisable(true); // habilitada quando a grade salva termina de carregar
         grid.setHgap(2);
         grid.setVgap(2);
         for (int d = 0; d < 7; d++) {
@@ -61,6 +68,7 @@ public class AgendaView {
                 ToggleButton b = new ToggleButton();
                 b.setPrefSize(46, 20);
                 cells[d][h] = b;
+                b.setOnAction(ev -> saveGrid());
                 grid.add(b, d + 1, h + 1);
             }
         }
@@ -97,9 +105,40 @@ public class AgendaView {
         HBox.setHgrow(left, Priority.ALWAYS);
         root.getChildren().addAll(title, help, new HBox(8, auth, status), new HBox(16, left, right));
         refresh(week);
+        loadGrid();
     }
 
     public Node root() { return new ScrollPane(root) {{ setFitToWidth(true); }}; }
+
+    private void saveGrid() {
+        java.util.Set<Integer> sel = new java.util.TreeSet<>();
+        for (int d = 0; d < 7; d++)
+            for (int h = 0; h < cells[d].length; h++)
+                if (cells[d][h].isSelected()) sel.add((d + 1) * 100 + FIRST_HOUR + h);
+        gridExecutor.submit(() -> {
+            try { services.calendar().saveAvailability(sel); }
+            catch (Throwable e) { Platform.runLater(() -> status.setText("Erro ao salvar a grade: " + e.getMessage())); }
+        });
+    }
+
+    private void loadGrid() {
+        gridExecutor.submit(() -> {
+            try {
+                var sel = services.calendar().loadAvailability();
+                Platform.runLater(() -> {
+                    grid.setDisable(false);
+                    for (int d = 0; d < 7; d++)
+                        for (int h = 0; h < cells[d].length; h++)
+                            cells[d][h].setSelected(sel.contains((d + 1) * 100 + FIRST_HOUR + h));
+                });
+            } catch (Throwable e) {
+                Platform.runLater(() -> {
+                    grid.setDisable(false);
+                    status.setText("Erro ao carregar a grade: " + e.getMessage());
+                });
+            }
+        });
+    }
 
     private List<FreeSlot> slots() {
         List<FreeSlot> out = new ArrayList<>();
