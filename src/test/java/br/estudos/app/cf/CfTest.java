@@ -61,7 +61,7 @@ class CfTest {
         };
         AiService ai = new AiService(List.of(runner), new JdbcAiCallRepository(db), queue, Clock.systemUTC(), () -> 100);
         Config d = Config.defaults(tmp);
-        Config cfg = new Config(tmp.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "fulano", d.models(), 100, null);
+        Config cfg = new Config(tmp.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "fulano", d.models(), 100, null, 0, 10, "http://localhost:8765");
         CodeforcesClient client = new CodeforcesClient() {
             public List<CfSubmission> userStatus(String h) throws CfException { return CfStats.parseStatus(STATUS); }
             public List<CfRatingPoint> userRating(String h) throws CfException { return CfStats.parseRating(RATING); }

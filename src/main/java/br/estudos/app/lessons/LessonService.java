@@ -28,6 +28,12 @@ public class LessonService {
     private final LessonRepository repo;
     private final Supplier<Config> config;
     private final Clock clock;
+    private final java.util.Set<Long> queued = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.concurrent.ExecutorService worker = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "aulas");
+        t.setDaemon(true);
+        return t;
+    });
 
     public LessonService(AiService ai, LessonRepository repo, Supplier<Config> config, Clock clock) {
         this.ai = ai;
@@ -59,29 +65,51 @@ public class LessonService {
         return kind + " " + content.trim() + (topics == null || topics.isBlank() ? "" : ": " + topics.trim());
     }
 
+    /** Ao iniciar o app: aulas que ficaram GERANDO (app fechado no meio) viram FALHOU. */
+    public int recoverStuck() {
+        return repo.failGenerating("app fechado durante a geração");
+    }
+
+    /** A aula espera sua vez (outra está gerando). */
+    public boolean isQueued(long lessonId) {
+        return queued.contains(lessonId);
+    }
+
     /**
-     * Registra a aula como GERANDO e envia à fila. O futuro completa com a aula já atualizada (PRONTA/FALHOU),
-     * depois de mover os arquivos.
+     * Registra a aula como GERANDO e enfileira. Só uma aula gera por vez (a detecção dos arquivos novos é por data).
+     * O futuro completa com a aula já atualizada (PRONTA/FALHOU), depois de mover os arquivos.
      */
     public CompletableFuture<Lesson> generate(String kind, String content, String topics, BudgetGate gate) {
         if (content == null || content.isBlank()) throw new IllegalArgumentException("conteúdo vazio");
         String area = areaOf(kind);
         Config cfg = config.get();
-        Instant start = clock.instant().truncatedTo(ChronoUnit.SECONDS);
+        Instant created = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         Lesson lesson = repo.insert(new Lesson(0, kind, area, content.trim(),
-                topics == null || topics.isBlank() ? null : topics.trim(), LessonStatus.GERANDO, null, null, null, start));
+                topics == null || topics.isBlank() ? null : topics.trim(), LessonStatus.GERANDO, null, null, null, created));
+        Duration timeout = Duration.ofMinutes(Math.max(TIMEOUT.toMinutes(), cfg.aiTimeoutMinutes()));
         AiRequest req = new AiRequest(AiRunnerKind.CLAUDE, cfg.model(Config.MODEL_LESSONS), AiTask.AULA,
-                command(kind, content, topics), List.of(), TIMEOUT);
-        TaskHandle<?> h = ai.submit(req, true, gate);
+                command(kind, content, topics), List.of(), timeout);
         CompletableFuture<Lesson> out = new CompletableFuture<>();
-        h.result().whenComplete((r, err) -> {
+        queued.add(lesson.id());
+        worker.execute(() -> {
+            queued.remove(lesson.id());
+            Instant start = clock.instant().truncatedTo(ChronoUnit.SECONDS);
             Lesson done;
-            if (err != null || h.result().isCancelled()) {
-                String msg = h.result().isCancelled() || err instanceof CancellationException
-                        ? "Cancelada." : rootMessage(err);
-                done = lesson.withResult(LessonStatus.FALHOU, null, null, msg);
-            } else {
-                done = collect(lesson, cfg, start);
+            try {
+                TaskHandle<?> h = ai.submit(req, true, gate);
+                try {
+                    h.result().get();
+                    done = collect(lesson, cfg, start);
+                } catch (CancellationException e) {
+                    done = lesson.withResult(LessonStatus.FALHOU, null, null, "Cancelada.");
+                } catch (java.util.concurrent.ExecutionException e) {
+                    done = lesson.withResult(LessonStatus.FALHOU, null, null, rootMessage(e));
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                done = lesson.withResult(LessonStatus.FALHOU, null, null, "Interrompida.");
+            } catch (RuntimeException e) {
+                done = lesson.withResult(LessonStatus.FALHOU, null, null, rootMessage(e));
             }
             try {
                 repo.update(done);

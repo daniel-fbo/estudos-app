@@ -44,6 +44,17 @@ public class JdbcLessonRepository implements LessonRepository {
     }
 
     @Override
+    public int failGenerating(String log) {
+        try (Connection c = db.connect(); PreparedStatement ps =
+                c.prepareStatement("UPDATE lesson SET status='FALHOU', log=? WHERE status='GERANDO'")) {
+            ps.setString(1, log);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
     public List<Lesson> search(String q, String area) {
         StringBuilder sql = new StringBuilder("SELECT * FROM lesson WHERE 1=1");
         List<String> args = new ArrayList<>();

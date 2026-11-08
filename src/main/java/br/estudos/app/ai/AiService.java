@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
 
 /** Único ponto que chama um {@link AiRunner}: aplica cache, orçamento diário e grava em {@code ai_call}. */
 public class AiService {
@@ -30,9 +31,18 @@ public class AiService {
     private final TaskQueue queue;
     private final Clock clock;
     private final IntSupplier dailyLimit;
+    private final LongSupplier tokenLimit;
+    private final IntSupplier timeoutMinutes;
 
     public AiService(List<AiRunner> runners, AiCallRepository repo, TaskQueue queue,
                      Clock clock, IntSupplier dailyLimit) {
+        this(runners, repo, queue, clock, dailyLimit, () -> 0L, () -> (int) AiRequest.DEFAULT_TIMEOUT.toMinutes());
+    }
+
+    public AiService(List<AiRunner> runners, AiCallRepository repo, TaskQueue queue, Clock clock,
+                     IntSupplier dailyLimit, LongSupplier tokenLimit, IntSupplier timeoutMinutes) {
+        this.tokenLimit = tokenLimit;
+        this.timeoutMinutes = timeoutMinutes;
         runners.forEach(r -> this.runners.put(r.kind(), r));
         this.repo = repo;
         this.queue = queue;
@@ -73,7 +83,7 @@ public class AiService {
 
         long t0 = System.nanoTime();
         try {
-            AiResult r = runner.run(req, tok);
+            AiResult r = runner.run(withConfiguredTimeout(req), tok);
             tok.throwIfCancelled();
             AiCall row = record(key, req, r.response(), AiCallStatus.OK, r, t0);
             return new AiOutcome(row, false);
@@ -95,13 +105,22 @@ public class AiService {
 
     /** Uso de hoje (dia local do relógio). */
     public BudgetStatus budget() {
-        return repo.usageSince(startOfToday(), dailyLimit.getAsInt());
+        return repo.usageSince(startOfToday(), dailyLimit.getAsInt()).withTokenLimit(tokenLimit.getAsLong());
     }
 
     /** Estatística dos últimos {@code days} dias (inclui hoje). */
     public AiUsage usage(int days) {
         Instant from = LocalDate.now(clock).minusDays(days - 1L).atStartOfDay(clock.getZone()).toInstant();
         return AiUsage.of(repo.statsSince(from), clock.getZone());
+    }
+
+    /** Pedido com timeout padrão usa o do config; pedido com timeout próprio (aulas) vale o maior dos dois. */
+    private AiRequest withConfiguredTimeout(AiRequest req) {
+        int min = timeoutMinutes.getAsInt();
+        if (min <= 0) return req;
+        Duration cfg = Duration.ofMinutes(min);
+        if (req.timeout().equals(AiRequest.DEFAULT_TIMEOUT)) return req.withTimeout(cfg);
+        return req.timeout().compareTo(cfg) >= 0 ? req : req.withTimeout(cfg);
     }
 
     private AiCall record(String key, AiRequest req, String response, AiCallStatus status, AiResult r, long t0) {

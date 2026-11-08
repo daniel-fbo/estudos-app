@@ -155,3 +155,13 @@ Formato:
 - interfaces novas: `Dated`, `StudyStats.sumInPeriod`, `StudyService.openSession/resumeOpen/endOpen/discardOpen`, `StudyRepository.{updateSession,deleteSession,openSession,logCountDelta,countDeltas,cfFirstAcTimes,pagesRead}`.
 - testes: `GoalsP1Test` + ajustes em `StudyStatsTest`, `DatabaseTest`, `JdbcCodeRepositoryTest`. Suíte verde.
 - pendências: diálogo de sessão aberta só aparece ao abrir o Painel; várias sessões abertas antigas só são tratadas uma por vez; UI não verificada com `mvn javafx:run` (sem display).
+
+## P2 — IA, aulas e Anki — 2026-11-07 — concluído
+- config novo: `dailyTokenBudget` (0 = sem limite), `aiTimeoutMinutes` (10), `ankiUrl`; editáveis em Configurações. `BudgetStatus` ganhou `tokenLimit`, `callsExceeded/tokensExceeded/reason()`; a confirmação e `BudgetDeclinedException` dizem qual limite estourou; Uso de IA mostra o limite de tokens.
+- `AiService`: construtor novo com `tokenLimit`/`timeoutMinutes`; pedido com timeout padrão usa o do config, o de aulas (60) vale o maior dos dois.
+- `ClaudeCliRunner` manda o prompt pelo stdin (`CliAiRunner.stdin/validate`); `AgyCliRunner` falha antes de executar acima de 100 KB (`MAX_PROMPT_BYTES`), sugerindo o Claude.
+- `LessonService`: `recoverStuck()` (chamado em `Services`) troca GERANDO por FALHOU "app fechado durante a geração"; geração serializada numa fila de 1 thread, `isQueued(id)` → UI mostra "na fila".
+- Anki: `AnkiClient.updateNoteFields`; `AnkiConnectClient` lê a URL do config a cada chamada; `CardService.edit` devolve `true` se ficou pendente (Anki fechado → `synced_at` nulo); `sync()` atualiza notas existentes em vez de criar outras. `Card.synced()` exige nota e `synced_at`; `list(synced=false)` inclui pendentes de edição.
+- corrigido bug antigo: `JdbcCardRepository.list` lia `wasNull()` depois de outras colunas (note id virava 0).
+- testes: `P2Test`, `AgyLimitTest` + ajustes nos existentes. Suíte verde.
+- pendências: UI não verificada com `mvn javafx:run` (sem display); aula cancelada na fila ainda não tem botão próprio (só a já em execução aparece em Tarefas).

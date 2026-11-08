@@ -53,9 +53,10 @@ class CardEdgeCasesTest {
         };
         AiService ai = new AiService(List.of(runner), new JdbcAiCallRepository(db), queue, Clock.systemUTC(), () -> 100);
         Config d = Config.defaults(tmp);
-        Config cfg = new Config(repoDir.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "", d.models(), 100, null);
+        Config cfg = new Config(repoDir.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "", d.models(), 100, null, 0, 10, "http://localhost:8765");
         AnkiClient anki = new AnkiClient() {
             public void createDeck(String deck) {}
+            public void updateNoteFields(long id, String f, String b) {}
             public List<Long> addNotes(List<Note> notes) {
                 sent.addAll(notes);
                 List<Long> ids = new ArrayList<>();

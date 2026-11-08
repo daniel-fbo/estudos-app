@@ -24,6 +24,17 @@ public class AgyCliRunner extends CliAiRunner {
     @Override
     public AiRunnerKind kind() { return AiRunnerKind.AGY; }
 
+    /** Limite do prompt (bytes UTF-8): o agy só aceita o prompt como argumento. */
+    public static final int MAX_PROMPT_BYTES = 100 * 1024;
+
+    @Override
+    void validate(AiRequest req) throws AiException {
+        int n = req.prompt().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        if (n > MAX_PROMPT_BYTES)
+            throw new AiException("Prompt grande demais para o agy (" + n / 1024 + " KB; máximo "
+                    + MAX_PROMPT_BYTES / 1024 + " KB), pois ele só recebe o prompt como argumento. Use o Claude.");
+    }
+
     @Override
     List<String> arguments(AiRequest req) {
         List<String> a = new ArrayList<>(List.of("--dangerously-skip-permissions", "--output-format", "json"));

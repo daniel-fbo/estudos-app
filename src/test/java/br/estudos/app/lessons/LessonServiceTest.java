@@ -51,7 +51,7 @@ class LessonServiceTest {
         AiService ai = new AiService(List.of(new FilesRunner()), new JdbcAiCallRepository(db), queue,
                 Clock.systemUTC(), () -> 100);
         Config cfg = Config.defaults(tmp).withDefaultsFrom(Config.defaults(tmp));
-        cfg = new Config(repoDir.toString(), cfg.dbPath(), "claude", "agy", "gcc", "g++", "", cfg.models(), 100, null);
+        cfg = new Config(repoDir.toString(), cfg.dbPath(), "claude", "agy", "gcc", "g++", "", cfg.models(), 100, null, 0, 10, "http://localhost:8765");
         Config c = cfg;
         svc = new LessonService(ai, new JdbcLessonRepository(db), () -> c, Clock.systemUTC());
     }

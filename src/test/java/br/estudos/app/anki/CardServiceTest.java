@@ -46,6 +46,7 @@ class CardServiceTest {
             for (Note x : n) { notes.add(x); ids.add(1000L + notes.size()); }
             return ids;
         }
+        public void updateNoteFields(long id, String f, String b) throws AnkiException { check(); }
         void check() throws AnkiException { if (down) throw new AnkiException("Anki fechado", true, null); }
     }
 
@@ -62,7 +63,7 @@ class CardServiceTest {
         };
         AiService ai = new AiService(List.of(runner), new JdbcAiCallRepository(db), queue, Clock.systemUTC(), () -> 100);
         Config d = Config.defaults(tmp);
-        Config cfg = new Config(repoDir.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "", d.models(), 100, null);
+        Config cfg = new Config(repoDir.toString(), d.dbPath(), "claude", "agy", "gcc", "g++", "", d.models(), 100, null, 0, 10, "http://localhost:8765");
         svc = new CardService(new JdbcCardRepository(db), anki, ai, () -> cfg, Clock.systemUTC());
     }
 
