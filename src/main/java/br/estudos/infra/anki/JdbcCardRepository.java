@@ -39,13 +39,14 @@ public class JdbcCardRepository implements CardRepository {
 
     @Override
     public void update(Card c) {
-        String sql = "UPDATE card SET front=?,back=?,area=?,front_hash=? WHERE id=?";
+        String sql = "UPDATE card SET front=?,back=?,area=?,front_hash=?,synced_at=? WHERE id=?";
         try (Connection con = db.connect(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, c.front());
             ps.setString(2, c.back());
             ps.setString(3, c.area().name());
             ps.setString(4, c.frontHash());
-            ps.setLong(5, c.id());
+            ps.setString(5, c.syncedAt());
+            ps.setLong(6, c.id());
             ps.executeUpdate();
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE"))
@@ -81,7 +82,8 @@ public class JdbcCardRepository implements CardRepository {
     public List<Card> list(Area area, Boolean synced) {
         StringBuilder sql = new StringBuilder("SELECT * FROM card WHERE 1=1");
         if (area != null) sql.append(" AND area=?");
-        if (synced != null) sql.append(synced ? " AND anki_note_id IS NOT NULL" : " AND anki_note_id IS NULL");
+        if (synced != null) sql.append(synced ? " AND anki_note_id IS NOT NULL AND synced_at IS NOT NULL"
+                : " AND (anki_note_id IS NULL OR synced_at IS NULL)");
         sql.append(" ORDER BY id DESC");
         try (Connection con = db.connect(); PreparedStatement ps = con.prepareStatement(sql.toString())) {
             if (area != null) ps.setString(1, area.name());
@@ -89,10 +91,11 @@ public class JdbcCardRepository implements CardRepository {
             try (ResultSet r = ps.executeQuery()) {
                 while (r.next()) {
                     long note = r.getLong("anki_note_id");
+                    boolean noNote = r.wasNull(); // antes de ler outras colunas (wasNull vale só para a última)
                     out.add(new Card(r.getLong("id"), r.getString("front"), r.getString("back"),
                             Area.valueOf(r.getString("area")), CardOrigin.valueOf(r.getString("origin")),
                             r.getString("source_ref"), r.getString("front_hash"),
-                            r.wasNull() ? null : note, r.getString("synced_at")));
+                            noNote ? null : note, r.getString("synced_at")));
                 }
             }
             return out;

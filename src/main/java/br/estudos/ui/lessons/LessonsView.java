@@ -124,7 +124,7 @@ public class LessonsView {
 
     private Node row(Lesson l) {
         Label name = new Label(l.title() + "  [" + l.area() + "]  — " + switch (l.status()) {
-            case GERANDO -> "gerando";
+            case GERANDO -> lessons.isQueued(l.id()) ? "na fila" : "gerando";
             case PRONTA -> "pronta";
             case FALHOU -> "falhou";
         });

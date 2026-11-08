@@ -10,6 +10,9 @@ import java.util.Map;
  * @param models        alias de modelo por tipo de tarefa (chaves: aulas, padrao, barato)
  * @param dailyAiBudget máximo de chamadas de IA por dia
  * @param theme         "escuro" ou "claro"
+ * @param dailyTokenBudget máximo de tokens (entrada + saída) por dia; 0 = sem limite
+ * @param aiTimeoutMinutes timeout padrão das chamadas de IA, em minutos
+ * @param ankiUrl       endereço do AnkiConnect
  */
 public record Config(
         String estudosRepo,
@@ -21,7 +24,13 @@ public record Config(
         String codeforcesHandle,
         Map<String, String> models,
         int dailyAiBudget,
-        String theme) {
+        String theme,
+        long dailyTokenBudget,
+        int aiTimeoutMinutes,
+        String ankiUrl) {
+
+    public static final int DEFAULT_AI_TIMEOUT_MIN = 10;
+    public static final String DEFAULT_ANKI_URL = "http://localhost:8765";
 
     public static final String MODEL_LESSONS = "aulas";
     public static final String MODEL_DEFAULT = "padrao";
@@ -40,7 +49,7 @@ public record Config(
 
     public Config withTheme(String theme) {
         return new Config(estudosRepo, dbPath, claudePath, agyPath, gccPath, gppPath,
-                codeforcesHandle, models, dailyAiBudget, theme);
+                codeforcesHandle, models, dailyAiBudget, theme, dailyTokenBudget, aiTimeoutMinutes, ankiUrl);
     }
 
     public static Config defaults(Path appHome) {
@@ -55,7 +64,10 @@ public record Config(
                 "",
                 models,
                 30,
-                THEME_DARK);
+                THEME_DARK,
+                0,
+                DEFAULT_AI_TIMEOUT_MIN,
+                DEFAULT_ANKI_URL);
     }
 
     /** Preenche campos ausentes (config antigo ou editado à mão) com os de {@code d}. */
@@ -69,7 +81,10 @@ public record Config(
                 codeforcesHandle == null ? d.codeforcesHandle : codeforcesHandle,
                 m,
                 dailyAiBudget > 0 ? dailyAiBudget : d.dailyAiBudget,
-                or(theme, d.theme));
+                or(theme, d.theme),
+                Math.max(0, dailyTokenBudget),
+                aiTimeoutMinutes > 0 ? aiTimeoutMinutes : d.aiTimeoutMinutes,
+                or(ankiUrl, d.ankiUrl));
     }
 
     public String model(String task) {

@@ -51,6 +51,9 @@ public class SettingsView {
     private final TextField modelDefault = new TextField();
     private final TextField modelCheap = new TextField();
     private final Spinner<Integer> budget = new Spinner<>(0, 10_000, 30);
+    private final TextField tokenBudget = new TextField();
+    private final Spinner<Integer> aiTimeout = new Spinner<>(1, 600, Config.DEFAULT_AI_TIMEOUT_MIN);
+    private final TextField ankiUrl = new TextField();
     private final ComboBox<String> themeCombo = new ComboBox<>();
     private final Label status = new Label();
     private final VBox root;
@@ -74,6 +77,10 @@ public class SettingsView {
         addRow("Modelo barato", modelCheap, null);
         budget.setEditable(true);
         addRow("Chamadas de IA por dia", budget, null);
+        addRow("Tokens de IA por dia", tokenBudget, new Label("(0 = sem limite)"));
+        aiTimeout.setEditable(true);
+        addRow("Timeout de IA (min)", aiTimeout, new Label("(aulas: no mínimo 60)"));
+        addRow("URL do AnkiConnect", ankiUrl, null);
 
         // Tema
         themeCombo.getItems().addAll(Config.THEME_DARK, Config.THEME_LIGHT);
@@ -126,6 +133,9 @@ public class SettingsView {
         modelDefault.setText(c.models().getOrDefault(Config.MODEL_DEFAULT, ""));
         modelCheap.setText(c.models().getOrDefault(Config.MODEL_CHEAP, ""));
         budget.getValueFactory().setValue(c.dailyAiBudget());
+        tokenBudget.setText(Long.toString(c.dailyTokenBudget()));
+        aiTimeout.getValueFactory().setValue(c.aiTimeoutMinutes());
+        ankiUrl.setText(c.ankiUrl());
         themeCombo.setValue(c.theme());
     }
 
@@ -139,12 +149,21 @@ public class SettingsView {
                 claudePath.getText().strip(), agyPath.getText().strip(),
                 gccPath.getText().strip(), gppPath.getText().strip(),
                 cfHandle.getText().strip(), models, budget.getValue(),
-                themeCombo.getValue());
+                themeCombo.getValue(), parseTokens(), aiTimeout.getValue(), ankiUrl.getText().strip());
+    }
+
+    private long parseTokens() {
+        try {
+            return Math.max(0, Long.parseLong(tokenBudget.getText().strip().replace(".", "").replace("_", "")));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Tokens por dia deve ser um número inteiro (0 = sem limite).");
+        }
     }
 
     private void save() {
         try {
             budget.increment(0); // confirma o texto digitado no spinner
+            aiTimeout.increment(0);
             Config newConfig = read();
             services.saveConfig(newConfig);
             status.setText("Salvo.");

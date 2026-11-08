@@ -36,18 +36,25 @@ abstract class CliAiRunner implements AiRunner {
 
     abstract List<String> arguments(AiRequest req);
 
+    /** Texto enviado pelo stdin, ou {@code null}. */
+    String stdin(AiRequest req) { return null; }
+
+    /** Falha antes de executar se o pedido não puder ser atendido por esta CLI. */
+    void validate(AiRequest req) throws AiException { }
+
     abstract AiResult parse(String stdout) throws AiException;
 
     @Override
     public AiResult run(AiRequest req, CancellationToken token) throws AiException {
         token.throwIfCancelled();
+        validate(req);
         Path dir = workDir.get();
         if (dir == null || !Files.isDirectory(dir))
             throw new AiException("Repositório 'estudos' não encontrado: " + dir + " (ajuste em Configurações).");
         List<String> cmd = new java.util.ArrayList<>();
         cmd.add(executable.get());
         cmd.addAll(arguments(req));
-        ProcessRequest pr = new ProcessRequest(cmd, dir, null, req.timeout(), Map.of());
+        ProcessRequest pr = new ProcessRequest(cmd, dir, stdin(req), req.timeout(), Map.of());
 
         Thread worker = Thread.currentThread();
         java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean(true);

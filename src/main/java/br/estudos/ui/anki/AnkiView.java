@@ -137,8 +137,9 @@ public class AnkiView {
             if (c == null) {
                 return cards.add(f, b, ar, CardOrigin.MANUAL, null).isPresent() ? "Card criado." : "Já existe card com essa frente.";
             }
-            cards.edit(c, f, b, ar);
-            return "Card atualizado.";
+            return cards.edit(c, f, b, ar)
+                    ? "Card salvo, mas o Anki não respondeu: a nota será atualizada na próxima sincronização."
+                    : "Card atualizado.";
         });
     }
 

@@ -65,15 +65,17 @@ public final class Services implements AutoCloseable {
         this.aiService = new AiService(List.of(
                 new ClaudeCliRunner(processRunner, () -> this.config.claudePath(), repoDir),
                 new AgyCliRunner(processRunner, () -> this.config.agyPath(), repoDir)),
-                new JdbcAiCallRepository(database), taskQueue, clock, () -> this.config.dailyAiBudget());
+                new JdbcAiCallRepository(database), taskQueue, clock, () -> this.config.dailyAiBudget(),
+                () -> this.config.dailyTokenBudget(), () -> this.config.aiTimeoutMinutes());
         this.lessonService = new br.estudos.app.lessons.LessonService(aiService,
                 new br.estudos.infra.lessons.JdbcLessonRepository(database), () -> this.config, clock);
+        this.lessonService.recoverStuck();
         this.pageIndex = new br.estudos.infra.library.LucenePageIndex(home.resolve("lucene"));
         this.libraryService = new br.estudos.app.library.LibraryService(
                 new br.estudos.infra.library.JdbcBookRepository(database),
                 new br.estudos.infra.library.PdfBoxReader(), pageIndex, aiService, () -> this.config, clock);
         this.cardService = new br.estudos.app.anki.CardService(new br.estudos.infra.anki.JdbcCardRepository(database),
-                new br.estudos.infra.http.AnkiConnectClient(br.estudos.infra.http.AnkiConnectClient.DEFAULT_URL),
+                new br.estudos.infra.http.AnkiConnectClient(() -> this.config.ankiUrl()),
                 aiService, () -> this.config, clock);
         this.cfService = new br.estudos.app.cf.CfService(new br.estudos.infra.cf.JdbcCfRepository(database),
                 new br.estudos.infra.http.CodeforcesHttpClient(br.estudos.infra.http.CodeforcesHttpClient.DEFAULT_URL,

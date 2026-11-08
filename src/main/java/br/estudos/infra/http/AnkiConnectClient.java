@@ -18,13 +18,24 @@ import java.util.List;
 
 /** Cliente do AnkiConnect (API versão 6). */
 public class AnkiConnectClient implements AnkiClient {
-    public static final String DEFAULT_URL = "http://localhost:8765";
+    public static final String DEFAULT_URL = br.estudos.app.config.Config.DEFAULT_ANKI_URL;
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private final URI url;
+    private final java.util.function.Supplier<String> url;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
-    public AnkiConnectClient(String url) { this.url = URI.create(url); }
+    public AnkiConnectClient(String url) { this(() -> url); }
+
+    /** O endereço é lido a cada chamada, para valer logo após salvar as Configurações. */
+    public AnkiConnectClient(java.util.function.Supplier<String> url) { this.url = url; }
+
+    @Override
+    public void updateNoteFields(long noteId, String front, String back) throws AnkiException {
+        ObjectNode params = JSON.createObjectNode();
+        ObjectNode note = params.putObject("note").put("id", noteId);
+        note.putObject("fields").put("Front", front).put("Back", back);
+        call("updateNoteFields", params);
+    }
 
     @Override
     public void createDeck(String deck) throws AnkiException {
@@ -55,9 +66,20 @@ public class AnkiConnectClient implements AnkiClient {
         ObjectNode body = JSON.createObjectNode().put("action", action).put("version", 6);
         body.set("params", params);
         try {
-            HttpRequest req = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(30))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body))).build();
+            URI target;
+            try {
+                target = URI.create(url.get().strip());
+            } catch (RuntimeException e) {
+                throw new AnkiException("Endereço do AnkiConnect inválido: " + url.get(), false, e);
+            }
+            HttpRequest req;
+            try {
+                req = HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(30))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body))).build();
+            } catch (IllegalArgumentException e) {
+                throw new AnkiException("Endereço do AnkiConnect inválido: " + url.get(), false, e);
+            }
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() != 200) throw new AnkiException("AnkiConnect respondeu HTTP " + resp.statusCode());
             JsonNode root = JSON.readTree(resp.body());

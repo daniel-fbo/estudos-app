@@ -44,8 +44,9 @@ class CliRunnersTest {
         var r = new ClaudeCliRunner(p, () -> "/bin/claude", () -> dir);
         AiResult res = r.run(AiRequest.of(AiRunnerKind.CLAUDE, "haiku", AiTask.OUTRO, "oi")
                 .withTimeout(Duration.ofSeconds(30)), CancellationToken.none());
-        assertEquals(List.of("/bin/claude", "-p", "oi", "--output-format", "json", "--model", "haiku",
+        assertEquals(List.of("/bin/claude", "-p", "--output-format", "json", "--model", "haiku",
                 "--dangerously-skip-permissions"), p.last.get().command());
+        assertEquals("oi", p.last.get().stdin());
         assertEquals(dir, p.last.get().workDir());
         assertEquals(Duration.ofSeconds(30), p.last.get().timeout());
         assertEquals(new AiResult("OK", 30L, 4L, 0.0042), res);

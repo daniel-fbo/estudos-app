@@ -51,13 +51,32 @@ public class CardService {
                 CardMarkdownParser.hash(f), null, null));
     }
 
-    public void edit(Card c, String front, String back, Area area) {
+    /**
+     * Salva o card. Se já tem nota no Anki, atualiza a nota; com o Anki fechado salva só local e deixa
+     * {@code synced_at} nulo (pendente — a próxima sincronização atualiza a nota). Devolve {@code true}
+     * se ficou pendente de sincronização.
+     */
+    public boolean edit(Card c, String front, String back, Area area) {
         if (front == null || front.isBlank() || back == null || back.isBlank())
             throw new IllegalArgumentException("frente e verso são obrigatórios");
-        String f = front.strip();
-        repo.update(new Card(c.id(), f, back.strip(), area, c.origin(), c.sourceRef(),
-                CardMarkdownParser.hash(f), c.ankiNoteId(), c.syncedAt()));
+        String f = front.strip(), b = back.strip();
+        String hash = CardMarkdownParser.hash(f);
+        boolean hasNote = c.ankiNoteId() != null;
+        // grava local primeiro (pode lançar por frente duplicada) sem tocar no Anki
+        repo.update(new Card(c.id(), f, b, area, c.origin(), c.sourceRef(),
+                hash, c.ankiNoteId(), hasNote ? null : c.syncedAt()));
+        if (!hasNote) return false;
+        try {
+            anki.updateNoteFields(c.ankiNoteId(), f, b);
+        } catch (AnkiException e) {
+            return true;
+        }
+        repo.update(new Card(c.id(), f, b, area, c.origin(), c.sourceRef(),
+                hash, c.ankiNoteId(), now()));
+        return false;
     }
+
+    private String now() { return clock.instant().truncatedTo(ChronoUnit.SECONDS).toString(); }
 
     public void delete(long id) { repo.delete(id); }
 
@@ -174,11 +193,23 @@ public class CardService {
         Map<Area, List<Card>> byArea = new EnumMap<>(Area.class);
         for (Card c : pending) byArea.computeIfAbsent(c.area(), k -> new ArrayList<>()).add(c);
         int ok = 0, rejected = 0;
-        String now = clock.instant().truncatedTo(ChronoUnit.SECONDS).toString();
+        String now = now();
         for (var e : byArea.entrySet()) {
             String deck = deckOf(e.getKey());
             anki.createDeck(deck);
-            List<Card> cards = e.getValue();
+            List<Card> cards = new ArrayList<>();
+            for (Card c : e.getValue()) {
+                if (c.ankiNoteId() == null) { cards.add(c); continue; }
+                try { // edição pendente: atualiza a nota existente em vez de criar outra
+                    anki.updateNoteFields(c.ankiNoteId(), c.front(), c.back());
+                    repo.markSynced(c.id(), c.ankiNoteId(), now);
+                    ok++;
+                } catch (AnkiException ex) {
+                    if (ex.unavailable()) throw ex;
+                    rejected++;
+                }
+            }
+            if (cards.isEmpty()) continue;
             List<Long> ids = anki.addNotes(cards.stream().map(c -> new AnkiClient.Note(deck, c.front(), c.back())).toList());
             for (int i = 0; i < cards.size(); i++) {
                 Long id = ids.get(i);

@@ -11,4 +11,7 @@ public interface LessonRepository {
 
     /** Filtra por trecho do título (sem diferenciar maiúsculas) e área; {@code null}/vazio = sem filtro. */
     List<Lesson> search(String titleQuery, String area);
+
+    /** Aulas {@code GERANDO} viram {@code FALHOU} com o log dado. Devolve quantas. */
+    int failGenerating(String log);
 }

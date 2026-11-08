@@ -61,7 +61,8 @@ public class AiUsageView {
                 AiUsage u = ai.usage(DAYS);
                 Platform.runLater(() -> {
                     today.setText("Hoje: " + b.callsToday() + "/" + b.dailyLimit() + " chamadas · "
-                            + b.tokensToday() + " tokens");
+                            + b.tokensToday() + (b.tokenLimit() > 0 ? "/" + b.tokenLimit() : "") + " tokens"
+                            + (b.tokenLimit() > 0 ? "" : " (sem limite de tokens)"));
                     cache.setText(String.format(Locale.ROOT, "Cache: %d de %d pedidos (%.0f%%)",
                             u.cacheHits(), u.cacheHits() + u.realCalls(), 100 * u.cacheHitRate()));
                     byDay.getItems().setAll(u.byDay().entrySet().stream().sorted(Map.Entry.<String, AiUsage.Row>comparingByKey().reversed()).toList());

@@ -12,8 +12,8 @@ import java.util.concurrent.CompletableFuture;
 public final class FxBudgetGate implements BudgetGate {
     private static boolean ask(BudgetStatus s) {
         Alert a = new Alert(Alert.AlertType.CONFIRMATION,
-                "Hoje já foram " + s.callsToday() + " chamadas de IA (orçamento: " + s.dailyLimit()
-                        + ", " + s.tokensToday() + " tokens).\nFazer mais esta chamada?",
+                "Estourou o " + s.reason() + ".\nHoje: " + s.callsToday() + " chamadas, "
+                        + s.tokensToday() + " tokens.\nFazer mais esta chamada?",
                 ButtonType.YES, ButtonType.NO);
         a.setHeaderText("Orçamento diário de IA atingido");
         return a.showAndWait().orElse(ButtonType.NO) == ButtonType.YES;
