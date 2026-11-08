@@ -175,3 +175,5 @@ Formato:
 - interfaces novas: `CalendarRepository.loadAvailability/saveAvailability` (células = dia 1..7 × 100 + hora), `CalendarService` com os mesmos nomes.
 - testes: `CalendarTest.salvaECarregaGrade`; `DatabaseTest` ajustado para 6 migrations. Suíte verde.
 - pendências: o launcher `bin/Estudos` não foi aberto de verdade porque o `mvn javafx:run` do usuário segurava o lock do Lucene; a prova foi com o java do runtime do pacote e `-Destudos.home` temporário. O app empacotado rodou uma vez contra o banco real (aplicou V5/V6).
+- revisão P3 (importante): `AgendaView` salva a grade num executor de 1 thread (`gridExecutor`), então os salvamentos gravam na ordem dos cliques.
+- revisão P3 (importante): grade fica desabilitada até a carga terminar (também em caso de erro), evitando que a carga desfaça um clique ou que `saveGrid` grave estado parcial.
