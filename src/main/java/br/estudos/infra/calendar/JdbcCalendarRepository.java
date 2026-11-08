@@ -76,4 +76,29 @@ public class JdbcCalendarRepository implements CalendarRepository {
             ps.executeUpdate();
         } catch (SQLException e) { throw new IllegalStateException(e); }
     }
+
+    @Override
+    public java.util.Set<Integer> loadAvailability() {
+        try (Connection c = db.connect(); Statement st = c.createStatement();
+             ResultSet r = st.executeQuery("SELECT weekday, hour FROM availability")) {
+            java.util.Set<Integer> out = new java.util.TreeSet<>();
+            while (r.next()) out.add(r.getInt(1) * 100 + r.getInt(2));
+            return out;
+        } catch (SQLException e) { throw new IllegalStateException(e); }
+    }
+
+    @Override
+    public void saveAvailability(java.util.Set<Integer> cells) {
+        try (Connection c = db.connect()) {
+            c.setAutoCommit(false);
+            try (Statement st = c.createStatement()) {
+                st.executeUpdate("DELETE FROM availability");
+            }
+            try (PreparedStatement ps = c.prepareStatement("INSERT INTO availability(weekday, hour) VALUES (?,?)")) {
+                for (int v : cells) { ps.setInt(1, v / 100); ps.setInt(2, v % 100); ps.addBatch(); }
+                ps.executeBatch();
+            }
+            c.commit();
+        } catch (SQLException e) { throw new IllegalStateException(e); }
+    }
 }

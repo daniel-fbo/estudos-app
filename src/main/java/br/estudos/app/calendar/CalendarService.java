@@ -25,6 +25,10 @@ public class CalendarService {
         this.clock = clock;
     }
 
+    /** Grade semanal salva: (diaDaSemana 1..7) * 100 + hora. */
+    public java.util.Set<Integer> loadAvailability() { return repo.loadAvailability(); }
+    public void saveAvailability(java.util.Set<Integer> cells) { repo.saveAvailability(cells); }
+
     public boolean authorized() { return client.authorized(); }
     public void authorize() throws CalendarClient.CalendarException { client.authorize(); }
 

@@ -91,4 +91,17 @@ class CalendarTest {
         assertTrue(svc.week(NOW.toLocalDate()).get(0).done());
         assertEquals(180 - Duration.between(plan.get(0).start(), plan.get(0).end()).toMinutes(), svc.needs().isEmpty() ? 0 : svc.needs().get(0).minutes());
     }
+
+    @Test void salvaECarregaGrade(@TempDir Path dir) throws Exception {
+        var db = new Database(dir.resolve("g.db"));
+        db.migrate();
+        var repo = new JdbcCalendarRepository(db);
+        assertTrue(repo.loadAvailability().isEmpty());
+        repo.saveAvailability(java.util.Set.of(109, 110, 720));
+        assertEquals(java.util.Set.of(109, 110, 720), repo.loadAvailability());
+        repo.saveAvailability(java.util.Set.of(215));
+        assertEquals(java.util.Set.of(215), repo.loadAvailability());
+        repo.saveAvailability(java.util.Set.of());
+        assertTrue(repo.loadAvailability().isEmpty());
+    }
 }

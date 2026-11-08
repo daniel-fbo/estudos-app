@@ -167,3 +167,11 @@ Formato:
 - pendências: UI não verificada com `mvn javafx:run` (sem display); aula cancelada na fila ainda não tem botão próprio (só a já em execução aparece em Tarefas).
 - revisão P2 (importante): `CardService.edit` grava o banco local primeiro (frente duplicada não altera mais a nota no Anki) e só depois sincroniza.
 - revisão P2 (importante): `AnkiConnectClient.call` converte URL sem esquema (`IllegalArgumentException` do request) em `AnkiException`.
+
+## P3 — Agenda e pacote — 2026-11-07 — concluído
+- feito: grade semanal de horários livres da Agenda salva a cada clique e recarregada ao abrir (tabela `availability(weekday,hour)`, migration `V6__availability`; é um padrão semanal, vale para qualquer semana).
+- `scripts/empacotar.sh`: jars `javafx-*-linux.jar` vão para `<app>/javafx` e entram por `--module-path=$APPDIR/javafx --add-modules=javafx.controls`; o resto no classpath. Testado com o runtime do pacote: abre sem "Unsupported JavaFX configuration".
+- `scripts/instalar-atalho.sh`: gera `~/.local/share/applications/estudos.desktop` (Exec = app empacotado, ícone `icon.png`); passou em `desktop-file-validate`.
+- interfaces novas: `CalendarRepository.loadAvailability/saveAvailability` (células = dia 1..7 × 100 + hora), `CalendarService` com os mesmos nomes.
+- testes: `CalendarTest.salvaECarregaGrade`; `DatabaseTest` ajustado para 6 migrations. Suíte verde.
+- pendências: o launcher `bin/Estudos` não foi aberto de verdade porque o `mvn javafx:run` do usuário segurava o lock do Lucene; a prova foi com o java do runtime do pacote e `-Destudos.home` temporário. O app empacotado rodou uma vez contra o banco real (aplicou V5/V6).

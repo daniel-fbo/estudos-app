@@ -21,8 +21,16 @@ MAIN_JAR="$(ls "$TARGET"/estudos-app-*.jar | head -n1)"
 # jpackage exige o jar principal dentro do --input, junto com as dependências.
 rm -rf "$STAGE" "$OUTPUT"
 mkdir -p "$STAGE"
-cp "$TARGET"/libs/*.jar "$STAGE"/
+# JavaFX vai para uma pasta própria (module-path); o resto fica no classpath.
+mkdir -p "$STAGE/javafx"
+for j in "$TARGET"/libs/*.jar; do
+    case "$(basename "$j")" in
+        javafx-*-linux.jar) cp "$j" "$STAGE/javafx/" ;;
+        *) cp "$j" "$STAGE/" ;;
+    esac
+done
 cp "$MAIN_JAR" "$STAGE"/
+ls "$STAGE"/javafx/*.jar >/dev/null 2>&1 || { echo "!! jars javafx-*-linux.jar não encontrados em target/libs" >&2; exit 1; }
 
 ICON_OPT=()
 [ -f src/main/resources/icon.png ] && ICON_OPT=(--icon src/main/resources/icon.png)
@@ -36,6 +44,8 @@ jpackage \
     --main-jar "$(basename "$MAIN_JAR")" \
     --main-class br.estudos.Launcher \
     --dest "$OUTPUT" \
+    --java-options "--module-path=\$APPDIR/javafx" \
+    --java-options "--add-modules=javafx.controls" \
     --java-options "--enable-native-access=ALL-UNNAMED" \
     "${ICON_OPT[@]}"
 

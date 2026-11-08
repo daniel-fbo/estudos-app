@@ -61,6 +61,7 @@ public class AgendaView {
                 ToggleButton b = new ToggleButton();
                 b.setPrefSize(46, 20);
                 cells[d][h] = b;
+                b.setOnAction(ev -> saveGrid());
                 grid.add(b, d + 1, h + 1);
             }
         }
@@ -97,9 +98,36 @@ public class AgendaView {
         HBox.setHgrow(left, Priority.ALWAYS);
         root.getChildren().addAll(title, help, new HBox(8, auth, status), new HBox(16, left, right));
         refresh(week);
+        loadGrid();
     }
 
     public Node root() { return new ScrollPane(root) {{ setFitToWidth(true); }}; }
+
+    private void saveGrid() {
+        java.util.Set<Integer> sel = new java.util.TreeSet<>();
+        for (int d = 0; d < 7; d++)
+            for (int h = 0; h < cells[d].length; h++)
+                if (cells[d][h].isSelected()) sel.add((d + 1) * 100 + FIRST_HOUR + h);
+        services.background().submit(() -> {
+            try { services.calendar().saveAvailability(sel); }
+            catch (Throwable e) { Platform.runLater(() -> status.setText("Erro ao salvar a grade: " + e.getMessage())); }
+        });
+    }
+
+    private void loadGrid() {
+        services.background().submit(() -> {
+            try {
+                var sel = services.calendar().loadAvailability();
+                Platform.runLater(() -> {
+                    for (int d = 0; d < 7; d++)
+                        for (int h = 0; h < cells[d].length; h++)
+                            cells[d][h].setSelected(sel.contains((d + 1) * 100 + FIRST_HOUR + h));
+                });
+            } catch (Throwable e) {
+                Platform.runLater(() -> status.setText("Erro ao carregar a grade: " + e.getMessage()));
+            }
+        });
+    }
 
     private List<FreeSlot> slots() {
         List<FreeSlot> out = new ArrayList<>();
