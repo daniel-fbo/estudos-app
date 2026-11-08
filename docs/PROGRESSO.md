@@ -165,3 +165,5 @@ Formato:
 - corrigido bug antigo: `JdbcCardRepository.list` lia `wasNull()` depois de outras colunas (note id virava 0).
 - testes: `P2Test`, `AgyLimitTest` + ajustes nos existentes. Suíte verde.
 - pendências: UI não verificada com `mvn javafx:run` (sem display); aula cancelada na fila ainda não tem botão próprio (só a já em execução aparece em Tarefas).
+- revisão P2 (importante): `CardService.edit` grava o banco local primeiro (frente duplicada não altera mais a nota no Anki) e só depois sincroniza.
+- revisão P2 (importante): `AnkiConnectClient.call` converte URL sem esquema (`IllegalArgumentException` do request) em `AnkiException`.

@@ -72,9 +72,14 @@ public class AnkiConnectClient implements AnkiClient {
             } catch (RuntimeException e) {
                 throw new AnkiException("Endereço do AnkiConnect inválido: " + url.get(), false, e);
             }
-            HttpRequest req = HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(30))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body))).build();
+            HttpRequest req;
+            try {
+                req = HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(30))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body))).build();
+            } catch (IllegalArgumentException e) {
+                throw new AnkiException("Endereço do AnkiConnect inválido: " + url.get(), false, e);
+            }
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() != 200) throw new AnkiException("AnkiConnect respondeu HTTP " + resp.statusCode());
             JsonNode root = JSON.readTree(resp.body());

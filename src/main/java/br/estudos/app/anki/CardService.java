@@ -60,20 +60,20 @@ public class CardService {
         if (front == null || front.isBlank() || back == null || back.isBlank())
             throw new IllegalArgumentException("frente e verso são obrigatórios");
         String f = front.strip(), b = back.strip();
-        String syncedAt = c.syncedAt();
-        boolean pending = false;
-        if (c.ankiNoteId() != null) {
-            try {
-                anki.updateNoteFields(c.ankiNoteId(), f, b);
-                syncedAt = now();
-            } catch (AnkiException e) {
-                syncedAt = null;
-                pending = true;
-            }
+        String hash = CardMarkdownParser.hash(f);
+        boolean hasNote = c.ankiNoteId() != null;
+        // grava local primeiro (pode lançar por frente duplicada) sem tocar no Anki
+        repo.update(new Card(c.id(), f, b, area, c.origin(), c.sourceRef(),
+                hash, c.ankiNoteId(), hasNote ? null : c.syncedAt()));
+        if (!hasNote) return false;
+        try {
+            anki.updateNoteFields(c.ankiNoteId(), f, b);
+        } catch (AnkiException e) {
+            return true;
         }
         repo.update(new Card(c.id(), f, b, area, c.origin(), c.sourceRef(),
-                CardMarkdownParser.hash(f), c.ankiNoteId(), syncedAt));
-        return pending;
+                hash, c.ankiNoteId(), now()));
+        return false;
     }
 
     private String now() { return clock.instant().truncatedTo(ChronoUnit.SECONDS).toString(); }
