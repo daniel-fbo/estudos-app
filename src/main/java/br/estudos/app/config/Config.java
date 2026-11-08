@@ -43,10 +43,6 @@ public record Config(
         theme = THEME_LIGHT.equals(theme) ? THEME_LIGHT : THEME_DARK;
     }
 
-    public boolean isDark() {
-        return THEME_DARK.equals(theme);
-    }
-
     public Config withTheme(String theme) {
         return new Config(estudosRepo, dbPath, claudePath, agyPath, gccPath, gppPath,
                 codeforcesHandle, models, dailyAiBudget, theme, dailyTokenBudget, aiTimeoutMinutes, ankiUrl);

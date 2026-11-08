@@ -116,8 +116,8 @@ class BackupEdgeCasesTest {
         Config d = Config.defaults(tmp);
         assertEquals("escuro", d.withTheme(null).theme());
         assertEquals("escuro", d.withTheme("  ").theme());
-        assertTrue(d.isDark());
-        assertFalse(d.withTheme("claro").isDark());
+        assertEquals(Config.THEME_DARK, d.theme());
+        assertEquals(Config.THEME_LIGHT, d.withTheme("claro").theme());
     }
 
     @Test
